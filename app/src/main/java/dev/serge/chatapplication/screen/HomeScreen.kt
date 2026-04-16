@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,7 +23,9 @@ import dev.serge.chatapplication.screen.neobrut.BrutalCard
 import dev.serge.chatapplication.screen.neobrut.BrutalHomeTopBar
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    navigateToChatScreen: () -> Unit
+) {
     Column(
         modifier = Modifier
             .systemBarsPadding()
@@ -34,24 +35,27 @@ fun HomeScreen() {
     ) {
         BrutalHomeTopBar()
         Spacer(Modifier.height(20.dp))
-        BrutalCard {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+        BrutalCard(
+            {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        "Kabir"
-                    )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Kabir"
+                        )
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null
+                        )
+                    }
                 }
-            }
-        }
+            },
+            navigateToChatScreen
+        )
     }
 }

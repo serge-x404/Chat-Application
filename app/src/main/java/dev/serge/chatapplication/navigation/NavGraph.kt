@@ -22,7 +22,11 @@ fun NavGraph(
 
 fun addHomeScreen(navHostController: NavHostController, navGraphBuilder: NavGraphBuilder) {
     navGraphBuilder.composable(NavRoute.Home.path) {
-        HomeScreen()
+        HomeScreen(
+            navigateToChatScreen = {
+                navHostController.navigate(NavRoute.ChatHome.path)
+            }
+        )
     }
 }
 
