@@ -55,6 +55,7 @@ fun BrutalTextField(
                 IntOffset(offset.roundToPx(), offset.roundToPx())
             }
             .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 12.dp)
     ) {
         Row(
             modifier = Modifier
@@ -71,7 +72,7 @@ fun BrutalTextField(
                 onValueChange = onValueChange,
                 interactionSource = interactionSource,
                 textStyle = TextStyle(
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = MaterialTheme.colorScheme.surface,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 ),

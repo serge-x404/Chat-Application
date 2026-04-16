@@ -50,9 +50,9 @@ fun BrutalSendButton(
                 .border(3.dp, MaterialTheme.colorScheme.surface)
                 .background(
                     if (enabled)
-                        MaterialTheme.colorScheme.primary
-                    else
                         MaterialTheme.colorScheme.tertiary
+                    else
+                        MaterialTheme.colorScheme.primary
                 )
                 .clickable(
                     interactionSource = interactionSource,

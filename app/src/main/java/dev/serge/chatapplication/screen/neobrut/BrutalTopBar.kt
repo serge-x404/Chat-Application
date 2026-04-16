@@ -120,7 +120,7 @@ fun BrutalTopBar(
                             IntOffset(-offset.roundToPx(), -offset.roundToPx())
                         }
                         .border(3.dp, MaterialTheme.colorScheme.surface)
-                        .background(if (isOnline) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary)
+                        .background(MaterialTheme.colorScheme.background)
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
