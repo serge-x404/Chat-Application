@@ -32,6 +32,8 @@ fun addHomeScreen(navHostController: NavHostController, navGraphBuilder: NavGrap
 
 fun addChatHomeScreen(navHostController: NavHostController, navGraphBuilder: NavGraphBuilder) {
     navGraphBuilder.composable(NavRoute.ChatHome.path) {
-        ChatHomeScreen()
+        ChatHomeScreen(
+            back = {navHostController.popBackStack()}
+        )
     }
 }

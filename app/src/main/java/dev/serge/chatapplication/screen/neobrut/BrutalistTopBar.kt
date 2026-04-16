@@ -38,8 +38,17 @@ fun BrutalTopBar(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val backButton = remember { MutableInteractionSource() }
+    val backPressed by backButton.collectIsPressedAsState()
+
     val offset by animateDpAsState(
         targetValue = if (isPressed) 0.dp else 4.dp,
+        animationSpec = tween(80),
+        label = ""
+    )
+
+    val backOffset by animateDpAsState(
+        targetValue = if (backPressed) 0.dp else 4.dp,
         animationSpec = tween(80),
         label = ""
     )
@@ -61,16 +70,29 @@ fun BrutalTopBar(
         ) {
             onBackClick?.let {
                 Box(
-                    modifier = Modifier
-                        .border(3.dp, MaterialTheme.colorScheme.surface)
-                        .clickable { it() }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                    modifier = modifier
+                        .offset {
+                            IntOffset(backOffset.roundToPx(), backOffset.roundToPx())
+                        }
+                        .clickable(
+                            interactionSource = backButton
+                        ) {it()}
+                        .background(MaterialTheme.colorScheme.surface)
                 ) {
-                    Text(
-                        "Back",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Black
-                    )
+                    Box(
+                        modifier = Modifier
+                            .offset {
+                                IntOffset(-backOffset.roundToPx(), -backOffset.roundToPx())
+                            }
+                            .border(3.dp, MaterialTheme.colorScheme.surface)
+                            .background(MaterialTheme.colorScheme.tertiary)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            "Back",
+                            fontWeight = FontWeight.Black
+                        )
+                    }
                 }
                 Spacer(Modifier.width(12.dp))
             }
@@ -84,7 +106,7 @@ fun BrutalTopBar(
 
             Box(
                 modifier = modifier
-                    .offset{
+                    .offset {
                         IntOffset(offset.roundToPx(), offset.roundToPx())
                     }
                     .clickable(
@@ -94,7 +116,7 @@ fun BrutalTopBar(
             ) {
                 Box(
                     modifier = Modifier
-                        .offset{
+                        .offset {
                             IntOffset(-offset.roundToPx(), -offset.roundToPx())
                         }
                         .border(3.dp, MaterialTheme.colorScheme.surface)
