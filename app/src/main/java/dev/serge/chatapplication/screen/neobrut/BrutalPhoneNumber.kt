@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,10 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun BrutalTextField(
+fun BrutalNumberField(
     value: String,
     onValueChange: (String) -> Unit,
-    onSend: () -> Unit,
     placeholder: String = "TYPE HERE"
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -74,12 +72,10 @@ fun BrutalTextField(
                 ),
                 keyboardOptions = KeyboardOptions(
                     imeAction = ImeAction.Send,
-                    keyboardType = KeyboardType.Text
-                ),
-                keyboardActions = KeyboardActions(
-                    onSend = { onSend() }
+                    keyboardType = KeyboardType.Phone
                 ),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.surface),
+                singleLine = true,
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 8.dp, vertical = 8.dp),
@@ -95,10 +91,6 @@ fun BrutalTextField(
                         innerTextField()
                     }
                 }
-            )
-            BrutalSendButton(
-                enabled = value.isNotBlank(),
-                onClick = onSend
             )
         }
     }

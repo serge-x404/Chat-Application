@@ -18,13 +18,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.serge.chatapplication.screen.neobrut.BrutalCard
 import dev.serge.chatapplication.screen.neobrut.BrutalHomeTopBar
 
 @Composable
 fun HomeScreen(
-    navigateToChatScreen: () -> Unit
+    navigateToChatScreen: () -> Unit,
+    navigateToAuth: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -33,7 +36,7 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        BrutalHomeTopBar()
+        BrutalHomeTopBar(onAddClick = navigateToAuth)
         Spacer(Modifier.height(20.dp))
         BrutalCard(
             {
@@ -46,7 +49,9 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Kabir"
+                            "Kabir".uppercase(),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
                         )
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,

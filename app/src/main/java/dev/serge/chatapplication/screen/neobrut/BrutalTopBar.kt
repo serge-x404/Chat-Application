@@ -63,7 +63,7 @@ fun BrutalTopBar(
             modifier = Modifier
                 .offset((-6).dp, (-6).dp)
                 .border(3.dp, MaterialTheme.colorScheme.surface)
-                .background(MaterialTheme.colorScheme.surfaceContainer)
+                .background(MaterialTheme.colorScheme.secondary)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween

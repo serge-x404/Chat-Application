@@ -62,6 +62,8 @@ dependencies {
 
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-database:22.0.1")
 
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.9.7")
