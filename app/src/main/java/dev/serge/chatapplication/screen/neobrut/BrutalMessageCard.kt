@@ -14,12 +14,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.serge.chatapplication.Message
+import dev.serge.chatapplication.screen.auth.Message
 
 @Composable
-fun BrutalMessageCard(message: Message) {
+fun BrutalMessageCard(
+    message: Message,
+    isMe: Boolean
+) {
 
-    val alignment = if (message.isMe) Arrangement.End else Arrangement.Start
+    val alignment = if (isMe) Arrangement.End else Arrangement.Start
 
     Row(
         modifier = Modifier.fillMaxWidth(),
