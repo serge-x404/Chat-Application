@@ -98,7 +98,8 @@ fun BrutalAuthScreen(
                             onAutoVerified = navigateToChat
                         )
                     },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    color = MaterialTheme.colorScheme.tertiary
                 )
 
             } else {
@@ -135,7 +136,8 @@ fun BrutalAuthScreen(
                             onError = {Log.e("Verify", it)}
                         )
                     },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
         }

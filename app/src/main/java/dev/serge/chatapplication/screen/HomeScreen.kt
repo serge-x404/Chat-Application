@@ -36,7 +36,7 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        BrutalHomeTopBar(onAddClick = navigateToAuth)
+        BrutalHomeTopBar(onLogout = navigateToAuth)
         Spacer(Modifier.height(20.dp))
         BrutalCard(
             {

@@ -20,7 +20,6 @@ class AuthManager(context: Context) {
         onError: (String) -> Unit
     ) {
         val credential = PhoneAuthProvider.getCredential(verificationId, code)
-
             auth.signInWithCredential(credential)
             .addOnCompleteListener {task ->
                 if (task.isSuccessful) {

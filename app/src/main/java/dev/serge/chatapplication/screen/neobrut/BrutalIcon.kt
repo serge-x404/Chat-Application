@@ -29,6 +29,8 @@ fun BrutalIconButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
+    val onClick = onClick
+
     val offset by animateDpAsState(
         targetValue = if (isPressed) 0.dp else 4.dp,
         animationSpec = tween(80)
@@ -36,18 +38,19 @@ fun BrutalIconButton(
 
     Box(
         modifier = Modifier
-            .offset{
+            .offset {
                 IntOffset(offset.roundToPx(), offset.roundToPx())
             }
             .background(MaterialTheme.colorScheme.surface)
             .clickable(
                 interactionSource = interactionSource,
-                indication = null
-            ) { onClick() }
+                indication = null,
+                onClick = onClick
+            )
     ) {
         Box(
             modifier = Modifier
-                .offset{
+                .offset {
                     IntOffset(-offset.roundToPx(), -offset.roundToPx())
                 }
                 .border(3.dp, MaterialTheme.colorScheme.surface)

@@ -16,12 +16,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun BrutalButton(text: String, onClick: () -> Unit, modifier: Modifier) {
+fun BrutalButton(text: String, onClick: () -> Unit, modifier: Modifier, color: Color) {
 
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -37,7 +38,8 @@ fun BrutalButton(text: String, onClick: () -> Unit, modifier: Modifier) {
                 IntOffset(offset.roundToPx(), offset.roundToPx())
             }
             .clickable(
-                interactionSource = interactionSource
+                interactionSource = interactionSource,
+                indication = null
             ) { onClick() }
             .background(MaterialTheme.colorScheme.surface)
     ) {
@@ -47,7 +49,7 @@ fun BrutalButton(text: String, onClick: () -> Unit, modifier: Modifier) {
                     IntOffset(-offset.roundToPx(), -offset.roundToPx())
                 }
                 .border(3.dp, MaterialTheme.colorScheme.surface)
-                .background(MaterialTheme.colorScheme.tertiary)
+                .background(color)
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
             Text(

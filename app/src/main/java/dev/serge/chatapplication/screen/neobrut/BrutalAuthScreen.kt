@@ -26,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -84,7 +86,13 @@ fun OtpInput(
         onValueChange = {
             if (it.length <= 6 && it.all { char -> char.isDigit() }) onOtpChange(it)
         },
+        textStyle = TextStyle(
+            color = MaterialTheme.colorScheme.surface,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp
+        ),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.surface),
         modifier = Modifier
             .focusRequester(focusRequester)
             .size(0.dp)
