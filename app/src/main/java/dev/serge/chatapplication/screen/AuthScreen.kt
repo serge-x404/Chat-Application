@@ -4,6 +4,7 @@ import android.app.Activity
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +34,7 @@ import com.google.firebase.auth.PhoneAuthProvider
 import dev.serge.chatapplication.screen.auth.AuthManager
 import dev.serge.chatapplication.screen.auth.AuthUiState
 import dev.serge.chatapplication.screen.neobrut.BrutalButton
+import dev.serge.chatapplication.screen.neobrut.BrutalLoader
 import dev.serge.chatapplication.screen.neobrut.BrutalTextField
 import dev.serge.chatapplication.screen.neobrut.OtpInput
 import dev.serge.chatapplication.screen.neobrut.PhoneInput
@@ -52,6 +54,18 @@ fun BrutalAuthScreen(
     val activity = context as Activity
 
     val authManager = remember { AuthManager(context) }
+
+    var isLoading by remember { mutableStateOf(false) }
+
+    if (isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            BrutalLoader(modifier = Modifier)
+        }
+        return
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -97,6 +111,7 @@ fun BrutalAuthScreen(
                     onClick = {
                         if (!isValidPhone || !isValidName) return@BrutalButton
 
+                        isLoading = true
                         sendOtp(
                             phone = "+91${state.phone}",
                             activity = activity,
@@ -105,8 +120,12 @@ fun BrutalAuthScreen(
                                     verificationId = verificationId,
                                     isOtpSent = true
                                 )
+                                isLoading = false
                             },
-                            onAutoVerified = navigateToChat
+                            onAutoVerified = {
+                                isLoading = false
+                                navigateToChat
+                            }
                         )
                     },
                     modifier = Modifier.align(Alignment.CenterHorizontally),

@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +32,7 @@ fun BrutalCard(content: @Composable () -> Unit, navigateToChatScreen: () -> Unit
 
     Box(
         modifier = Modifier
+            .fillMaxWidth()
             .padding(16.dp)
             .offset{
                 IntOffset(offset.roundToPx(), offset.roundToPx())
@@ -45,6 +47,7 @@ fun BrutalCard(content: @Composable () -> Unit, navigateToChatScreen: () -> Unit
     ) {
         Box(
             modifier = Modifier
+                .fillMaxWidth()
                 .offset{
                     IntOffset(-offset.roundToPx(), -offset.roundToPx())
                 }

@@ -3,6 +3,7 @@ package dev.serge.chatapplication.screen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,48 +27,51 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import dev.serge.chatapplication.screen.auth.ChatManager
 import dev.serge.chatapplication.screen.auth.User
+import dev.serge.chatapplication.screen.neobrut.BrutalCard
+import dev.serge.chatapplication.screen.neobrut.BrutalLoader
 
 @Composable
 fun UserScreen(
     onUserClick: (String, String) -> Unit
 ) {
     var users by remember { mutableStateOf<List<User>>(emptyList()) }
-
+    var isLoading by remember { mutableStateOf(true) }
     val chatManager = remember { ChatManager() }
     val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     LaunchedEffect(Unit) {
-        chatManager.getAllUsers(currentUid) { users = it }
+        chatManager.getAllUsers(currentUid) {
+            users = it
+            isLoading = false
+        }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        Text(
-            "SELECT USER",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Black
-        )
-
-        LazyColumn() {
-            items(users, key = {it.uid}) {user ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .border(2.dp, MaterialTheme.colorScheme.surface)
-                        .background(MaterialTheme.colorScheme.background)
-                        .padding(12.dp)
-                        .clickable{
+    if (isLoading) {
+        Box(modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            BrutalLoader(modifier = Modifier)
+        }
+    }
+    else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            LazyColumn() {
+                items(users, key = { it.uid }) { user ->
+                    BrutalCard(
+                        content = {
+                            Text(
+                                text = user.userName,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        navigateToChatScreen = {
                             val chatId = listOf(currentUid, user.uid).sorted().joinToString("_")
-                            onUserClick(chatId,user.uid)
+                            onUserClick(chatId, user.userName)
                         }
-                ) {
-                    Text(
-                        text = user.phone,
-                        fontWeight = FontWeight.Bold
                     )
                 }
             }

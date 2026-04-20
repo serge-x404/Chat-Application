@@ -40,30 +40,5 @@ fun HomeScreen(
         UserScreen { chatId, userName ->
             navigateToChatScreen(chatId,userName)
         }
-//        Spacer(Modifier.height(20.dp))
-//        BrutalCard(
-//            {
-//                Column(
-//                    modifier = Modifier.fillMaxWidth()
-//                ) {
-//                    Row(
-//                        modifier = Modifier.fillMaxWidth(),
-//                        horizontalArrangement = Arrangement.SpaceBetween,
-//                        verticalAlignment = Alignment.CenterVertically
-//                    ) {
-//                        Text(
-//                            "Kabir".uppercase(),
-//                            fontWeight = FontWeight.Bold,
-//                            fontSize = 18.sp
-//                        )
-//                        Icon(
-//                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-//                            contentDescription = null
-//                        )
-//                    }
-//                }
-//            },
-//            navigateToChatScreen
-//        )
     }
 }
