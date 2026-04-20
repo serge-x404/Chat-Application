@@ -15,12 +15,13 @@ class AuthManager(context: Context) {
 
     fun verifyOtp(
         verificationId: String,
+        userName: String,
         code: String,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
         val credential = PhoneAuthProvider.getCredential(verificationId, code)
-            auth.signInWithCredential(credential)
+        auth.signInWithCredential(credential)
             .addOnCompleteListener {task ->
                 if (task.isSuccessful) {
                     val user = auth.currentUser
@@ -28,7 +29,8 @@ class AuthManager(context: Context) {
                     user?.let {
                         saveUser(
                             it.uid,
-                            it.phoneNumber ?: ""
+                            it.phoneNumber ?: "",
+                            userName
                         ) {
                             onSuccess()
                         }
@@ -42,6 +44,7 @@ class AuthManager(context: Context) {
     private fun saveUser(
         uid: String,
         phone: String,
+        userName: String,
         onComplete: () -> Unit
     ) {
         val userRef = db.child("users").child(uid)
@@ -53,6 +56,7 @@ class AuthManager(context: Context) {
                 val user = mapOf(
                     "uid" to uid,
                     "phone" to phone,
+                    "userName" to userName,
                     "createdAt" to System.currentTimeMillis()
                 )
 

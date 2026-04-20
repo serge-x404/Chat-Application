@@ -57,4 +57,20 @@ class ChatManager {
         db.child("chats").child(chatId).child("messages")
             .removeEventListener(listener)
     }
+
+    fun getAllUsers(currentUid: String, onUsers: (List<User>) -> Unit) {
+        db.child("users")
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val users = snapshot.children.mapNotNull { userSnapshot ->
+                        userSnapshot.getValue(User::class.java)?.takeIf { it.uid != currentUid }
+                    }
+                    onUsers(users)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("Users",error.message)
+                }
+            })
+    }
 }

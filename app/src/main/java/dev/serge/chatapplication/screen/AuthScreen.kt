@@ -33,8 +33,10 @@ import com.google.firebase.auth.PhoneAuthProvider
 import dev.serge.chatapplication.screen.auth.AuthManager
 import dev.serge.chatapplication.screen.auth.AuthUiState
 import dev.serge.chatapplication.screen.neobrut.BrutalButton
+import dev.serge.chatapplication.screen.neobrut.BrutalTextField
 import dev.serge.chatapplication.screen.neobrut.OtpInput
 import dev.serge.chatapplication.screen.neobrut.PhoneInput
+import dev.serge.chatapplication.screen.neobrut.UserInput
 import java.util.concurrent.TimeUnit
 
 @Composable
@@ -69,6 +71,14 @@ fun BrutalAuthScreen(
         Column {
 
             if (!state.isOtpSent) {
+                UserInput(
+                    value = state.userName,
+                    onValueChange = {
+                        val textValidate = it.filter { char -> char.isLetterOrDigit() }
+                        state = state.copy(userName = textValidate)
+                    }
+                )
+                Spacer(Modifier.height(8.dp))
                 PhoneInput(
                     value = state.phone,
                     onValueChange = {
@@ -78,13 +88,14 @@ fun BrutalAuthScreen(
                 )
 
                 val isValidPhone = state.phone.length == 10
+                val isValidName = state.userName.isNotBlank()
 
                 Spacer(modifier = Modifier.height(24.dp))
 
                 BrutalButton(
                     text = "SEND OTP",
                     onClick = {
-                        if (!isValidPhone) return@BrutalButton
+                        if (!isValidPhone || !isValidName) return@BrutalButton
 
                         sendOtp(
                             phone = "+91${state.phone}",
@@ -131,9 +142,11 @@ fun BrutalAuthScreen(
                             verificationId = verificationId,
                             code = state.otp,
                             onSuccess = {
-                                Log.d("Verify","onSuccess called -navigating")
-                                navigateToChat() },
-                            onError = {Log.e("Verify", it)}
+                                Log.d("Verify", "onSuccess called -navigating")
+                                navigateToChat()
+                            },
+                            onError = { Log.e("Verify", it) },
+                            userName = state.userName
                         )
                     },
                     modifier = Modifier.align(Alignment.CenterHorizontally),

@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -96,5 +97,16 @@ fun OtpInput(
         modifier = Modifier
             .focusRequester(focusRequester)
             .size(0.dp)
+    )
+}
+@Composable
+fun UserInput(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    BrutalUserTextField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = "USERNAME",
     )
 }

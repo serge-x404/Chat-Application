@@ -33,6 +33,7 @@ import dev.serge.chatapplication.screen.neobrut.BrutalTopBar
 @Composable
 fun ChatHomeScreen(
     chatId: String,
+    userName: String,
     back: () -> Unit
 ) {
 
@@ -64,7 +65,7 @@ fun ChatHomeScreen(
                 alpha = 0.8f
             ))
     ) {
-        BrutalTopBar("Kabir", onBackClick = back)
+        BrutalTopBar(userName, onBackClick = back)
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
