@@ -35,9 +35,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
+import dev.serge.chatapplication.screen.auth.Group
 import dev.serge.chatapplication.screen.auth.ChatManager
 import dev.serge.chatapplication.screen.auth.ChatPreview
-import dev.serge.chatapplication.screen.auth.User
+import dev.serge.chatapplication.screen.auth.GroupManager
 import dev.serge.chatapplication.screen.neobrut.BrutalLoader
 import java.util.Date
 import java.util.Locale
@@ -50,8 +51,12 @@ fun UserScreen(
     val chatManager = remember { ChatManager() }
     val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     var chatPreview by remember { mutableStateOf<List<ChatPreview>>(emptyList()) }
+    val groupManager = remember { GroupManager() }
+    var groups by remember { mutableStateOf<List<Group>>(emptyList()) }
 
     LaunchedEffect(Unit) {
+        var chatsLoaded = false
+        var groupsLoaded = false
         chatManager.getAllUsers(currentUid) {allUsers ->
             val previews = mutableListOf<ChatPreview>()
 
@@ -71,10 +76,16 @@ fun UserScreen(
 
                     if (previews.size == allUsers.size) {
                         chatPreview = previews.sortedByDescending { it.lastMessageTime }
-                        isLoading = false
+                        chatsLoaded = true
+                        if (groupsLoaded) isLoading = false
                     }
                 }
             }
+        }
+        groupManager.getUserGroups {loadedGroups ->
+            groups = loadedGroups.sortedByDescending { it.createdAt }
+            groupsLoaded = true
+            if (chatsLoaded) isLoading = false
         }
     }
 
@@ -91,7 +102,7 @@ fun UserScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            LazyColumn() {
+            LazyColumn {
                 items(chatPreview, key = { it.chatId }) { preview ->
                     ChatListItem(
                         preview = preview,
@@ -100,6 +111,19 @@ fun UserScreen(
                                 preview.chatId,
                                 preview.userName,
                                 preview.userId
+                            )
+                        }
+                    )
+                }
+
+                items(groups, key = {it.id}) {group ->
+                    GroupListItem(
+                        group = group,
+                        onClick = {
+                            onUserClick(
+                                group.id,
+                                group.name,
+                                group.createdBy
                             )
                         }
                     )
@@ -191,5 +215,88 @@ fun formatMessageTime(timestamp: Long): String {
         diff < 86_400_000 -> "${diff / 3_600_000}h ago"
         diff < 604_800_000 -> "${diff / 86_400_000}d ago"
         else -> SimpleDateFormat("MM/dd/yy", Locale.getDefault()).format(Date(timestamp))
+    }
+}
+
+
+@Composable
+fun GroupListItem(
+    group: Group,
+    onClick: () -> Unit
+) {
+    var lastMessage by remember { mutableStateOf("") }
+    var lastMessageTime by remember { mutableStateOf(0L) }
+    val groupManager = remember { GroupManager() }
+
+    LaunchedEffect(group.id) {
+        groupManager.getLastGroupMessage(group.id) { message ->
+            if (message != null) {
+                lastMessage = message.text
+                lastMessageTime = message.timestamp
+            }
+        }
+    }
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val offset by animateDpAsState(
+        targetValue = if (isPressed) 0.dp else 4.dp,
+        animationSpec = tween(durationMillis = 80)
+    )
+
+    Box(
+        modifier = Modifier
+            .padding(8.dp)
+            .offset {
+                IntOffset(offset.roundToPx(), offset.roundToPx())
+            }
+            .background(MaterialTheme.colorScheme.surface)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+    ) {
+        Box(
+            modifier = Modifier
+                .offset {
+                    IntOffset(-offset.roundToPx(), -offset.roundToPx())
+                }
+                .border(3.dp, MaterialTheme.colorScheme.surface)
+                .background(MaterialTheme.colorScheme.tertiary)
+                .padding(12.dp)
+                .fillMaxWidth()
+        ) {
+            Column {
+                Text(
+                    text = group.name.uppercase(),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Spacer(Modifier.height(4.dp))
+                Row {
+                    Text(
+                        text = if (lastMessage.isNotEmpty()) lastMessage else "No messages yet",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = if (lastMessageTime > 0)
+                            formatMessageTime(lastMessageTime)
+                        else
+                            formatMessageTime(group.createdAt),
+                        fontWeight = FontWeight.Normal,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+                    )
+                }
+            }
+        }
     }
 }

@@ -37,7 +37,7 @@ fun HomeScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         BrutalHomeTopBar(onLogout = navigateToAuth)
-        UserScreen { chatId, userName, userId ->
+        UserScreen { chatId, userName, userId->
             navigateToChatScreen(chatId,userName,userId)
         }
     }

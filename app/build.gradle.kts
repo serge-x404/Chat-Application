@@ -73,10 +73,4 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite:1.5.0-alpha17")
     implementation("androidx.compose.material:material-icons-core:1.7.8")
-
-    // WebRTC
-//    implementation("org.webrtc:google-webrtc:1.0.32006")
-//
-//    // Socket.IO
-//    implementation("io.socket:socket.io-client-java:2.0.1")
 }
