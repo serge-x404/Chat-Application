@@ -31,8 +31,8 @@ fun NavGraph(
 fun addHomeScreen(navHostController: NavHostController, navGraphBuilder: NavGraphBuilder) {
     navGraphBuilder.composable(NavRoute.Home.path) {
         HomeScreen(
-            navigateToChatScreen = {chatId, userName ->
-                navHostController.navigate("${NavRoute.ChatHome.path}/$chatId/$userName")
+            navigateToChatScreen = {chatId, userName, userId ->
+                navHostController.navigate("${NavRoute.ChatHome.path}/$chatId/$userName/$userId")
             },
             navigateToAuth = {
                 navHostController.navigate(NavRoute.AuthScreen.path)
@@ -42,13 +42,15 @@ fun addHomeScreen(navHostController: NavHostController, navGraphBuilder: NavGrap
 }
 
 fun addChatHomeScreen(navHostController: NavHostController, navGraphBuilder: NavGraphBuilder) {
-    navGraphBuilder.composable("${NavRoute.ChatHome.path}/{chatId}/{userName}") {
+    navGraphBuilder.composable("${NavRoute.ChatHome.path}/{chatId}/{userName}/{userId}") {
         val chatId = it.arguments?.getString("chatId") ?: ""
         val userName = it.arguments?.getString("userName") ?: ""
+        val userId = it.arguments?.getString("userId") ?: ""
 
         ChatHomeScreen(
             chatId = chatId,
             userName = userName,
+            userId = userId,
             back = {navHostController.popBackStack()}
         )
     }

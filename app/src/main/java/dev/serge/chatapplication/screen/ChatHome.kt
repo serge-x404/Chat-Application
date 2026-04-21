@@ -22,7 +22,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import dev.serge.chatapplication.screen.auth.ChatManager
 import dev.serge.chatapplication.screen.auth.Message
@@ -34,6 +33,7 @@ import dev.serge.chatapplication.screen.neobrut.BrutalTopBar
 fun ChatHomeScreen(
     chatId: String,
     userName: String,
+    userId: String,
     back: () -> Unit
 ) {
 

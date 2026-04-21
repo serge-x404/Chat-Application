@@ -37,7 +37,7 @@ fun BrutalLoader(
     Box(
         modifier = modifier
             .size(size)
-            .border(3.dp, MaterialTheme.colorScheme.outline)
+            .border(3.dp, MaterialTheme.colorScheme.surface)
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {

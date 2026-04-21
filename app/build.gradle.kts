@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.compose.foundation.layout)
+    implementation(libs.androidx.compose.foundation)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -72,4 +73,10 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite:1.5.0-alpha17")
     implementation("androidx.compose.material:material-icons-core:1.7.8")
+
+    // WebRTC
+//    implementation("org.webrtc:google-webrtc:1.0.32006")
+//
+//    // Socket.IO
+//    implementation("io.socket:socket.io-client-java:2.0.1")
 }
