@@ -26,7 +26,7 @@ import dev.serge.chatapplication.screen.neobrut.BrutalHomeTopBar
 
 @Composable
 fun HomeScreen(
-    navigateToChatScreen: (String, String, String) -> Unit,
+    navigateToChatScreen: (String, String, String, Boolean) -> Unit,
     navigateToAuth: () -> Unit
 ) {
     Column(
@@ -37,8 +37,8 @@ fun HomeScreen(
             .background(MaterialTheme.colorScheme.background)
     ) {
         BrutalHomeTopBar(onLogout = navigateToAuth)
-        UserScreen { chatId, userName, userId->
-            navigateToChatScreen(chatId,userName,userId)
+        UserScreen { chatId, userName, userId, isGroup->
+            navigateToChatScreen(chatId,userName,userId, isGroup)
         }
     }
 }

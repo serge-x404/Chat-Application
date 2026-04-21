@@ -4,4 +4,5 @@ sealed class NavRoute(val path: String) {
     object Home: NavRoute("home")
     object ChatHome: NavRoute("chatHome")
     object AuthScreen: NavRoute("authScreen")
+    object GroupChat: NavRoute("groupChat")
 }

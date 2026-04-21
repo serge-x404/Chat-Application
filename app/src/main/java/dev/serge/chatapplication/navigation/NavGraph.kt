@@ -9,6 +9,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import dev.serge.chatapplication.screen.BrutalAuthScreen
 import dev.serge.chatapplication.screen.ChatHomeScreen
+import dev.serge.chatapplication.screen.GroupChatScreen
 import dev.serge.chatapplication.screen.HomeScreen
 
 @Composable
@@ -25,17 +26,27 @@ fun NavGraph(
         addHomeScreen(navHostController, this)
         addChatHomeScreen(navHostController, this)
         addAuthScreen(navHostController, this)
+        addGroupChatScreen(navHostController, this)
     }
 }
 
 fun addHomeScreen(navHostController: NavHostController, navGraphBuilder: NavGraphBuilder) {
     navGraphBuilder.composable(NavRoute.Home.path) {
         HomeScreen(
-            navigateToChatScreen = {chatId, userName, userId ->
-                navHostController.navigate("${NavRoute.ChatHome.path}/$chatId/$userName/$userId")
+            navigateToChatScreen = {chatId, userName, userId, isGroup ->
+                if (isGroup) {
+                    navHostController.navigate("${NavRoute.GroupChat.path}/$chatId")
+                }
+                else {
+                    navHostController.navigate("${NavRoute.ChatHome.path}/$chatId/$userName/$userId")
+                }
             },
             navigateToAuth = {
-                navHostController.navigate(NavRoute.AuthScreen.path)
+                navHostController.navigate(NavRoute.AuthScreen.path) {
+                    popUpTo(NavRoute.Home.path) {
+                        inclusive = true
+                    }
+                }
             }
         )
     }
@@ -62,6 +73,16 @@ fun addAuthScreen(navHostController: NavHostController, navGraphBuilder: NavGrap
             navigateToChat = {
                 navHostController.navigate(NavRoute.Home.path)
             }
+        )
+    }
+}
+
+fun addGroupChatScreen(navHostController: NavHostController, navGraphBuilder: NavGraphBuilder) {
+    navGraphBuilder.composable("${NavRoute.GroupChat.path}/{groupId}") {
+        val groupId = it.arguments?.getString("groupId") ?: ""
+        GroupChatScreen(
+            groupId = groupId,
+            back = {navHostController.popBackStack()}
         )
     }
 }

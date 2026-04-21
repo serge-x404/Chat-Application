@@ -89,14 +89,60 @@ class GroupManager {
     ) {
         db.child("groupMessages").child(groupId)
             .limitToLast(1)
-            .addValueEventListener(object : ValueEventListener {
+            .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val message = snapshot.children.lastOrNull()
-                        ?.getValue(GroupMessage::class.java)
+                    val message = snapshot.children.mapNotNull {
+                        it.getValue(GroupMessage::class.java)
+                    }.lastOrNull()
+                    Log.d("Group", "Last message: ${message?.text}")
                     onMessage(message)
                 }
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("Group", "getLastGroupMessage failed: ${error.message}")
+                    onMessage(null)
+                }
+            })
+    }
+    fun sendGroupMessage(
+        groupId: String,
+        text: String,
+        senderName: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        try {
+            val messageId = UUID.randomUUID().toString()
+            val message = GroupMessage(
+                id = messageId,
+                groupId = groupId,
+                senderId = currentUid,
+                senderName = senderName,
+                text = text,
+                timestamp = System.currentTimeMillis()
+            )
+
+            db.child("groupMessages").child(groupId).child(messageId)
+                .setValue(message)
+                .addOnSuccessListener { onSuccess() }
+                .addOnFailureListener { onError(it.message ?: "Failed to send message") }
+        } catch (e: Exception) {
+            onError(e.message ?: "Error sending message")
+        }
+    }
+
+    fun getGroup(
+        groupId: String,
+        onGroup: (Group?) -> Unit
+    ) {
+        db.child("groups").child(groupId)
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    onGroup(snapshot.getValue(Group::class.java))
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("Group","getGroup failed: ${error.message}")
+                    onGroup(null)
                 }
             })
     }

@@ -39,18 +39,20 @@ import dev.serge.chatapplication.screen.auth.Group
 import dev.serge.chatapplication.screen.auth.ChatManager
 import dev.serge.chatapplication.screen.auth.ChatPreview
 import dev.serge.chatapplication.screen.auth.GroupManager
+import dev.serge.chatapplication.screen.auth.GroupPreview
 import dev.serge.chatapplication.screen.neobrut.BrutalLoader
 import java.util.Date
 import java.util.Locale
 
 @Composable
 fun UserScreen(
-    onUserClick: (String, String, String) -> Unit
+    onUserClick: (String, String, String, Boolean) -> Unit
 ) {
     var isLoading by remember { mutableStateOf(true) }
     val chatManager = remember { ChatManager() }
     val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     var chatPreview by remember { mutableStateOf<List<ChatPreview>>(emptyList()) }
+    var groupPreview by remember { mutableStateOf<List<GroupPreview>>(emptyList()) }
     val groupManager = remember { GroupManager() }
     var groups by remember { mutableStateOf<List<Group>>(emptyList()) }
 
@@ -83,9 +85,27 @@ fun UserScreen(
             }
         }
         groupManager.getUserGroups {loadedGroups ->
-            groups = loadedGroups.sortedByDescending { it.createdAt }
-            groupsLoaded = true
-            if (chatsLoaded) isLoading = false
+            val gPreviews = mutableListOf<GroupPreview>()
+
+            loadedGroups.forEach { group ->
+                groupManager.getLastGroupMessage(group.id) {message ->
+                    val gPreview = GroupPreview(
+                        id = group.id,
+                        name = group.name,
+                        lastMessage = message?.text ?: "No messages yet",
+                        lastMessageTime = message?.timestamp ?: group.createdAt,
+                        lastMessageFrom = message?.senderName ?: "",
+                        memberCount = group.members.size
+                    )
+                    gPreviews.add(gPreview)
+
+                    if (gPreviews.size == loadedGroups.size) {
+                        groupPreview = gPreviews.sortedByDescending { it.lastMessageTime }
+                        groupsLoaded = true
+                        if (chatsLoaded) isLoading = false
+                    }
+                }
+            }
         }
     }
 
@@ -110,20 +130,22 @@ fun UserScreen(
                             onUserClick(
                                 preview.chatId,
                                 preview.userName,
-                                preview.userId
+                                preview.userId,
+                                false
                             )
                         }
                     )
                 }
 
-                items(groups, key = {it.id}) {group ->
+                items(groupPreview, key = {it.id}) {gPreview ->
                     GroupListItem(
-                        group = group,
+                        preview = gPreview,
                         onClick = {
                             onUserClick(
-                                group.id,
-                                group.name,
-                                group.createdBy
+                                gPreview.id,
+                                gPreview.name,
+                                gPreview.id,
+                                true
                             )
                         }
                     )
@@ -221,22 +243,9 @@ fun formatMessageTime(timestamp: Long): String {
 
 @Composable
 fun GroupListItem(
-    group: Group,
+    preview: GroupPreview,
     onClick: () -> Unit
 ) {
-    var lastMessage by remember { mutableStateOf("") }
-    var lastMessageTime by remember { mutableStateOf(0L) }
-    val groupManager = remember { GroupManager() }
-
-    LaunchedEffect(group.id) {
-        groupManager.getLastGroupMessage(group.id) { message ->
-            if (message != null) {
-                lastMessage = message.text
-                lastMessageTime = message.timestamp
-            }
-        }
-    }
-
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -270,7 +279,7 @@ fun GroupListItem(
         ) {
             Column {
                 Text(
-                    text = group.name.uppercase(),
+                    text = preview.name.uppercase(),
                     fontWeight = FontWeight.Black,
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onBackground
@@ -278,7 +287,9 @@ fun GroupListItem(
                 Spacer(Modifier.height(4.dp))
                 Row {
                     Text(
-                        text = if (lastMessage.isNotEmpty()) lastMessage else "No messages yet",
+                        text = if (preview.lastMessageFrom.isNotEmpty()) {
+                            "${preview.lastMessageFrom}: ${preview.lastMessage}"
+                        } else preview.lastMessage,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                         maxLines = 1,
@@ -287,10 +298,7 @@ fun GroupListItem(
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = if (lastMessageTime > 0)
-                            formatMessageTime(lastMessageTime)
-                        else
-                            formatMessageTime(group.createdAt),
+                        text = formatMessageTime(preview.lastMessageTime),
                         fontWeight = FontWeight.Normal,
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
