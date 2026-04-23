@@ -2,6 +2,7 @@ package dev.serge.chatapplication
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.mutableStateListOf
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -31,6 +32,7 @@ class WebRTCManager(
 
     private var isOfferHandled = false
     private var isAnswerHandled = false
+    private var addedIceCandidates = mutableStateListOf<String>()
 
 
     var onRemoteStreamAdded: (MediaStream) -> Unit = {}
@@ -78,8 +80,10 @@ class WebRTCManager(
                         Log.d("WebRTC", "offerFrom: ${callData["offerFrom"]}")
                         Log.d("WebRTC", "answerFrom: ${callData["answerFrom"]}")
 
-                        val offer = callData["offer"] as? String
                         val offerFrom = callData["offerFrom"] as? String
+                        val answerFrom = callData["answerFrom"] as? String
+
+                        val offer = callData["offer"] as? String
                         if (offer != null && !isOfferHandled &&
                             peerConnection == null &&
                             offerFrom == otherUserId
@@ -91,8 +95,6 @@ class WebRTCManager(
                         }
 
                         val answer = callData["answer"] as? String
-                        val answerFrom = callData["answerFrom"] as? String
-
                         if (answer != null && !isAnswerHandled &&
                             peerConnection != null &&
                             answerFrom == otherUserId
@@ -102,19 +104,23 @@ class WebRTCManager(
                             handleCallAnswered(answer)
                         }
 
-                        val iceCandidates = callData["iceCandidates"] as? Map<*, *>
-                        iceCandidates?.forEach { (_, candidate) ->
+                        val iceCandidates = callData["iceCandidates_$otherUserId"] as? Map<*, *>
+                        Log.d("WebRTC","ICE Count: ${iceCandidates?.size ?: 0}")
+                        iceCandidates?.forEach { (key, candidate) ->
                             if (candidate is Map<*, *> && peerConnection != null) {
-                                try {
-                                    val iceCandidate = IceCandidate(
-                                        candidate["sdpMid"] as String,
-                                        (candidate["sdpMLineIndex"] as Long).toInt(),
-                                        candidate["candidate"] as String
-                                    )
-                                    peerConnection?.addIceCandidate(iceCandidate)
-                                    Log.d("WebRTC", "ICE Candidate added")
-                                } catch (e: Exception) {
-                                    Log.e("WebRTC", "Error adding ICE: ${e.message}")
+                                val candidateKey = key.toString()
+                                if (!addedIceCandidates.contains(candidateKey)) {
+                                    try {
+                                        val iceCandidate = IceCandidate(
+                                            candidate["sdpMid"] as String,
+                                            (candidate["sdpMLineIndex"] as Long).toInt(),
+                                            candidate["candidate"] as String
+                                        )
+                                        peerConnection?.addIceCandidate(iceCandidate)
+                                        Log.d("WebRTC", "ICE Candidate added")
+                                    } catch (e: Exception) {
+                                        Log.e("WebRTC", "Error adding ICE: ${e.message}")
+                                    }
                                 }
                             }
                         }
@@ -142,9 +148,7 @@ class WebRTCManager(
             audioTrack = peerConnectionFactory.createAudioTrack("audio",audioSource)
 
             localMediaStream = peerConnectionFactory.createLocalMediaStream("localStream")
-            localMediaStream?.audioTracks?.forEach { track ->
-                localMediaStream?.addTrack(track)
-            }
+            localMediaStream?.addTrack(audioTrack)
             Log.d("WebRTC","Local stream created")
             return localMediaStream!!
         } catch (e: Exception) {
@@ -238,9 +242,7 @@ class WebRTCManager(
             }
             createPeerConnection()
 
-            localMediaStream?.audioTracks?.forEach { audioTrack ->
-                peerConnection?.addTrack(audioTrack)
-            }
+            peerConnection?.addTrack(audioTrack)
 
             peerConnection?.createOffer(
                 object : SdpObserver {
@@ -394,7 +396,8 @@ class WebRTCManager(
             "sdpMid" to candidate.sdpMid,
             "sdpMLineIndex" to candidate.sdpMLineIndex
         )
-        db.child("webrtc_calls").child(callId).child("iceCandidates")
+        db.child("webrtc_calls").child(callId)
+            .child("iceCandidates_$otherUserId")
             .push()
             .setValue(candidateData)
     }
@@ -427,28 +430,11 @@ class WebRTCManager(
 
             isAnswerHandled = false
             isOfferHandled = false
+            addedIceCandidates.clear()
 
             Log.d("WebRTC","Disconnected")
         } catch (e: Exception) {
             Log.e("WebRTC","Error disconnecting: ${e.message}")
         }
     }
-
-    fun cleanup() {
-        try {
-            Log.d("WebRTC","Cleaning up WebRTC resources")
-            disconnect()
-            try {
-                PeerConnectionFactory.shutdownInternalTracer()
-            } catch (e: Exception) {
-                Log.e("WebRTC","Error: ${e.message}")
-            }
-        } catch (e: Exception) {
-            Log.e("WebRTC","Error during cleanup: ${e.message}")
-        }
-    }
-
-//    fun getConnectionState(): PeerConnection.IceConnectionState? {
-//        return peerConnection?.iceConnectionState()
-//    }
 }

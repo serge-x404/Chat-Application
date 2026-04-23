@@ -75,7 +75,8 @@ fun BrutalGroupBar(
                             IntOffset(backOffset.roundToPx(), backOffset.roundToPx())
                         }
                         .clickable(
-                            interactionSource = backButton
+                            interactionSource = backButton,
+                            indication = null
                         ) {it()}
                         .background(MaterialTheme.colorScheme.surface)
                 ) {

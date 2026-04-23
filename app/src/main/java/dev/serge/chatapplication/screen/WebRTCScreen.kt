@@ -78,11 +78,11 @@ fun WebRTCCallScreen(
             }
         }
 
-        webRTCManager.onSignalingStateChanged = { state: PeerConnection.SignalingState ->
-            signalingState = state
-        }
+//        webRTCManager.onSignalingStateChanged = { state: PeerConnection.SignalingState ->
+//            signalingState = state
+//        }
 
-        webRTCManager.onRemoteStreamAdded = { remoteStream ->
+        webRTCManager.onRemoteStreamAdded = { _ ->
             Log.d("WebRTC", "Remote stream added")
         }
 
@@ -254,7 +254,6 @@ private fun getConnectionStateText(state: PeerConnection.IceConnectionState): St
         PeerConnection.IceConnectionState.FAILED -> "Connection Failed"
         PeerConnection.IceConnectionState.DISCONNECTED -> "Disconnected"
         PeerConnection.IceConnectionState.CLOSED -> "Call Ended"
-        else -> "Unknown"
     }
 }
 

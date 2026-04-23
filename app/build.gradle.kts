@@ -33,8 +33,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
@@ -68,13 +68,12 @@ dependencies {
     implementation("com.google.firebase:firebase-database:22.0.1")
 
     // Navigation
-    implementation("androidx.navigation:navigation-compose:2.9.7")
+    implementation("androidx.navigation:navigation-compose:2.9.8")
 
     // Material3
     implementation("androidx.compose.material3:material3:1.4.0")
-    implementation("androidx.compose.material3:material3-adaptive-navigation-suite:1.5.0-alpha17")
+    implementation("androidx.compose.material3:material3-adaptive-navigation-suite:1.5.0-alpha18")
     implementation("androidx.compose.material:material-icons-core:1.7.8")
 
-    implementation("io.getstream:stream-webrtc-android:1.1.0")
-    implementation("io.socket:socket.io-client:2.0.1")
+    implementation("io.getstream:stream-webrtc-android:1.3.10")
 }

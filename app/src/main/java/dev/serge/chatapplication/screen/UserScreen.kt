@@ -165,7 +165,7 @@ fun ChatListItem(
 
     val offset by animateDpAsState(
         targetValue = if (isPressed) 0.dp else 4.dp,
-        animationSpec = tween(durationMillis = 80)
+        animationSpec = tween(80)
     )
 
     Box(
@@ -177,9 +177,8 @@ fun ChatListItem(
             .background(MaterialTheme.colorScheme.surface)
             .clickable(
                 interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
+                indication = null
+            ) { onClick() }
     ) {
         Box(
             modifier = Modifier
@@ -251,7 +250,7 @@ fun GroupListItem(
 
     val offset by animateDpAsState(
         targetValue = if (isPressed) 0.dp else 4.dp,
-        animationSpec = tween(durationMillis = 80)
+        animationSpec = tween(80)
     )
 
     Box(
@@ -263,9 +262,8 @@ fun GroupListItem(
             .background(MaterialTheme.colorScheme.surface)
             .clickable(
                 interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
+                indication = null
+            ) { onClick() }
     ) {
         Box(
             modifier = Modifier
