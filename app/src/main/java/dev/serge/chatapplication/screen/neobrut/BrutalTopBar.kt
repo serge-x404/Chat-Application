@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.sp
 fun BrutalTopBar(
     title: String,
     modifier: Modifier = Modifier,
-    isOnline: Boolean = true,
-    onBackClick: (() -> Unit)? = null
+    onBackClick: (() -> Unit)? = null,
+    navigateToCall: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -111,7 +111,9 @@ fun BrutalTopBar(
                     }
                     .clickable(
                         interactionSource = interactionSource
-                    ) {}
+                    ) {
+                        navigateToCall()
+                    }
                     .background(MaterialTheme.colorScheme.surface)
             ) {
                 Box(
@@ -124,7 +126,7 @@ fun BrutalTopBar(
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = if (isOnline) "ONLINE" else "OFFLINE",
+                        text = "CALL",
                         color = Color.Black,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp

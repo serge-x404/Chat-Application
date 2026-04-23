@@ -11,6 +11,7 @@ import dev.serge.chatapplication.screen.BrutalAuthScreen
 import dev.serge.chatapplication.screen.ChatHomeScreen
 import dev.serge.chatapplication.screen.GroupChatScreen
 import dev.serge.chatapplication.screen.HomeScreen
+import dev.serge.chatapplication.screen.WebRTCCallScreen
 
 @Composable
 fun NavGraph(
@@ -27,6 +28,7 @@ fun NavGraph(
         addChatHomeScreen(navHostController, this)
         addAuthScreen(navHostController, this)
         addGroupChatScreen(navHostController, this)
+        addWebRTCScreen(navHostController, this)
     }
 }
 
@@ -62,7 +64,10 @@ fun addChatHomeScreen(navHostController: NavHostController, navGraphBuilder: Nav
             chatId = chatId,
             userName = userName,
             userId = userId,
-            back = {navHostController.popBackStack()}
+            back = {navHostController.popBackStack()},
+            navigateToCall = { chatId, otherUserId, userName->
+                navHostController.navigate("${NavRoute.WebRTC.path}/$chatId/$otherUserId/$userName")
+            }
         )
     }
 }
@@ -83,6 +88,21 @@ fun addGroupChatScreen(navHostController: NavHostController, navGraphBuilder: Na
         GroupChatScreen(
             groupId = groupId,
             back = {navHostController.popBackStack()}
+        )
+    }
+}
+
+fun addWebRTCScreen(navHostController: NavHostController, navGraphBuilder: NavGraphBuilder) {
+    navGraphBuilder.composable("${NavRoute.WebRTC.path}/{chatId}/{otherUserId}/{userName}") {
+        val chatId = it.arguments?.getString("chatId") ?: ""
+        val otherUserid = it.arguments?.getString("otherUserId") ?: ""
+        val userName = it.arguments?.getString("userName") ?: ""
+
+        WebRTCCallScreen(
+            chatId = chatId,
+            otherUserName = userName,
+            otherUserId = otherUserid,
+            onCallEnded = { navHostController.popBackStack() }
         )
     }
 }

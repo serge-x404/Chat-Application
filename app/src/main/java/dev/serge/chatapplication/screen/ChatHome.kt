@@ -34,7 +34,8 @@ fun ChatHomeScreen(
     chatId: String,
     userName: String,
     userId: String,
-    back: () -> Unit
+    back: () -> Unit,
+    navigateToCall: (String, String, String) -> Unit
 ) {
 
     var inputText by rememberSaveable { mutableStateOf("") }
@@ -61,11 +62,17 @@ fun ChatHomeScreen(
             .navigationBarsPadding()
             .imePadding()
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceContainer.copy(
-                alpha = 0.8f
-            ))
+            .background(
+                MaterialTheme.colorScheme.surfaceContainer.copy(
+                    alpha = 0.8f
+                )
+            )
     ) {
-        BrutalTopBar(userName, onBackClick = back)
+        BrutalTopBar(
+            userName,
+            navigateToCall = { navigateToCall(chatId,userId,userName) },
+            onBackClick = back,
+        )
         LazyColumn(
             modifier = Modifier
                 .weight(1f)

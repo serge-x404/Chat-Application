@@ -42,6 +42,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -73,4 +74,7 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.4.0")
     implementation("androidx.compose.material3:material3-adaptive-navigation-suite:1.5.0-alpha17")
     implementation("androidx.compose.material:material-icons-core:1.7.8")
+
+    implementation("io.getstream:stream-webrtc-android:1.1.0")
+    implementation("io.socket:socket.io-client:2.0.1")
 }

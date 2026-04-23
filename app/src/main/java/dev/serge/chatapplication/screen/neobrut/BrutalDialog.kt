@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -42,23 +44,28 @@ fun BrutalLogoutDialog(
                     .padding(16.dp)
             ) {
 
-                Text(
-                    text = "LOGOUT?",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "LOGOUT?",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Black
+                    )
 
-                Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(4.dp))
 
-                Text(
-                    text = "You will be signed out.",
-                    fontWeight = FontWeight.Bold
-                )
+                    Text(
+                        text = "You will be signed out.",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(18.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
 
                     BrutalButton(
