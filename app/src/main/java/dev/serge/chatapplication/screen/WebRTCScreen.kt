@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import dev.serge.chatapplication.WebRTCManager
 import dev.serge.chatapplication.screen.neobrut.BrutalButton
+import dev.serge.chatapplication.screen.neobrut.BrutalLoader
 import org.webrtc.PeerConnection
 
 @Composable
@@ -42,6 +43,7 @@ fun WebRTCCallScreen(
     chatId: String,
     otherUserName: String,
     otherUserId: String,
+    isCaller: Boolean,
     onCallEnded: () -> Unit
 ) {
     val context = LocalContext.current
@@ -65,8 +67,6 @@ fun WebRTCCallScreen(
         )
     }
 
-    val onIncomingCallCallback = remember { {isIncomingCall = true} }
-
     LaunchedEffect(webRTCManager) {
         webRTCManager.onConnectionStateChanged = { state ->
             connectionState = state
@@ -77,10 +77,6 @@ fun WebRTCCallScreen(
                 isCallActive = true
             }
         }
-
-//        webRTCManager.onSignalingStateChanged = { state: PeerConnection.SignalingState ->
-//            signalingState = state
-//        }
 
         webRTCManager.onRemoteStreamAdded = { _ ->
             Log.d("WebRTC", "Remote stream added")
@@ -98,7 +94,13 @@ fun WebRTCCallScreen(
             webRTCManager.createLocalStream()
             Log.d("WebRTC","Local stream created")
 
-            webRTCManager.initiateCall()
+            if (isCaller) {
+                Log.d("WebRTC","I am caller - initiating")
+                webRTCManager.setCallerName(otherUserId)
+                webRTCManager.initiateCall()
+            } else {
+                Log.d("WebRTC","I am receiver - waiting")
+            }
         } catch (e: Exception) {
             Log.e("WebRTC", "Error initializing call: ${e.message}")
             e.printStackTrace()
@@ -183,10 +185,13 @@ fun WebRTCCallScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = if (isCallActive) Color.Green else Color.Yellow,
-                    strokeWidth = 2.dp
+//                CircularProgressIndicator(
+//                    modifier = Modifier.size(24.dp),
+//                    color = if (isCallActive) Color.Green else Color.Yellow,
+//                    strokeWidth = 2.dp
+//                )
+                BrutalLoader(
+                    modifier = Modifier
                 )
 
                 Column(modifier = Modifier.weight(1f)) {
@@ -262,7 +267,7 @@ private fun getConnectionStateColor(state: PeerConnection.IceConnectionState): C
         PeerConnection.IceConnectionState.CONNECTED,
         PeerConnection.IceConnectionState.COMPLETED -> Color.Green
         PeerConnection.IceConnectionState.FAILED -> Color.Red
-        PeerConnection.IceConnectionState.CHECKING -> Color.Yellow
+        PeerConnection.IceConnectionState.CHECKING -> Color.Black
         else -> Color.Gray
     }
 }

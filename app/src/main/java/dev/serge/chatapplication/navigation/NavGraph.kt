@@ -2,11 +2,17 @@ package dev.serge.chatapplication.navigation
 
 import android.content.SharedPreferences
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import dev.serge.chatapplication.screen.BrutalAuthScreen
 import dev.serge.chatapplication.screen.ChatHomeScreen
 import dev.serge.chatapplication.screen.GroupChatScreen
@@ -20,8 +26,29 @@ fun NavGraph(
     modifier: Modifier
 ) {
     val isUserLoggedIn = sharedPreferences.getBoolean("isUserLoggedIn", false)
-
     val startDestination = if (isUserLoggedIn) NavRoute.Home.path else NavRoute.AuthScreen.path
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isEmpty()) return@LaunchedEffect
+
+        val db = FirebaseDatabase.getInstance().reference
+        db.child("incoming_calls").child(currentUserId)
+            .addValueEventListener(object : ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val data = snapshot.value as? Map<*,*> ?: return
+                    val callerId = data["callerId"] as? String ?: return
+                    val chatId = data["chatId"] as? String ?: return
+                    val callerName = data["callerName"] as? String ?: "Unknown"
+
+                    navHostController.navigate("${NavRoute.WebRTC.path}/$chatId/$callerId/$callerName/false")
+
+                    snapshot.ref.removeValue()
+                }
+
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
 
     NavHost(navHostController, startDestination) {
         addHomeScreen(navHostController, this)
@@ -66,7 +93,7 @@ fun addChatHomeScreen(navHostController: NavHostController, navGraphBuilder: Nav
             userId = userId,
             back = {navHostController.popBackStack()},
             navigateToCall = { chatId, otherUserId, userName->
-                navHostController.navigate("${NavRoute.WebRTC.path}/$chatId/$otherUserId/$userName")
+                navHostController.navigate("${NavRoute.WebRTC.path}/$chatId/$otherUserId/$userName/true")
             }
         )
     }
@@ -93,15 +120,17 @@ fun addGroupChatScreen(navHostController: NavHostController, navGraphBuilder: Na
 }
 
 fun addWebRTCScreen(navHostController: NavHostController, navGraphBuilder: NavGraphBuilder) {
-    navGraphBuilder.composable("${NavRoute.WebRTC.path}/{chatId}/{otherUserId}/{userName}") {
+    navGraphBuilder.composable("${NavRoute.WebRTC.path}/{chatId}/{otherUserId}/{userName}/{isCaller}") {
         val chatId = it.arguments?.getString("chatId") ?: ""
         val otherUserid = it.arguments?.getString("otherUserId") ?: ""
         val userName = it.arguments?.getString("userName") ?: ""
+        val isCaller = it.arguments?.getString("isCaller")?.toBoolean() ?: true
 
         WebRTCCallScreen(
             chatId = chatId,
             otherUserName = userName,
             otherUserId = otherUserid,
+            isCaller = isCaller,
             onCallEnded = { navHostController.popBackStack() }
         )
     }
