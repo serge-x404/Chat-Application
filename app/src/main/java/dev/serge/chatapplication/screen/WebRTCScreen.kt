@@ -16,10 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,29 +40,38 @@ import com.google.firebase.auth.FirebaseAuth
 import dev.serge.chatapplication.WebRTCManager
 import dev.serge.chatapplication.screen.neobrut.BrutalButton
 import dev.serge.chatapplication.screen.neobrut.BrutalLoader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.webrtc.PeerConnection
 
 @Composable
 fun WebRTCCallScreen(
     chatId: String,
-    otherUserName: String,
     otherUserId: String,
+    otherUserName: String,
     isCaller: Boolean,
     onCallEnded: () -> Unit
 ) {
     val context = LocalContext.current
 
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {isGranted->
+        hasPermission = isGranted
         Log.d("WebRTC","Microphone permission: $isGranted")
     }
 
     LaunchedEffect(Unit) {
-        if (ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.RECORD_AUDIO
-        ) != PackageManager.PERMISSION_GRANTED) {
+        if (!hasPermission) {
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
@@ -87,47 +95,72 @@ fun WebRTCCallScreen(
         )
     }
 
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(webRTCManager) {
         webRTCManager.onConnectionStateChanged = { state ->
-            connectionState = state
-            Log.d("WebRTC", "Connection state changed: $state")
-            if (state == PeerConnection.IceConnectionState.CONNECTED ||
-                state == PeerConnection.IceConnectionState.COMPLETED
-            ) {
-                isCallActive = true
+            scope.launch(Dispatchers.Main) {
+                connectionState = state
+                Log.d("WebRTC", "Connection state changed: $state")
+
+                if (state == PeerConnection.IceConnectionState.CONNECTED ||
+                    state == PeerConnection.IceConnectionState.COMPLETED
+                ) {
+                    isCallActive = true
+                } else if (state == PeerConnection.IceConnectionState.DISCONNECTED ||
+                    state == PeerConnection.IceConnectionState.CLOSED ||
+                    state == PeerConnection.IceConnectionState.FAILED
+                ) {
+                    isCallActive = false
+                    onCallEnded()
+                }
             }
         }
 
         webRTCManager.onRemoteStreamAdded = { _ ->
-            Log.d("WebRTC", "Remote stream added")
+            scope.launch(Dispatchers.Main) {
+                Log.d("WebRTC", "Remote stream added")
+            }
         }
 
         webRTCManager.onIncomingCall = {
-            Log.d("WebRTC","Incoming Call detected")
-            isIncomingCall = true
+            scope.launch(Dispatchers.Main) {
+                Log.d("WebRTC", "Incoming Call detected")
+                isIncomingCall = true
+            }
+        }
+
+        webRTCManager.onCallEnded = {
+            scope.launch(Dispatchers.Main) {
+                Log.d("WebRTC", "Call ended from manager")
+                onCallEnded()
+            }
+        }
+    }
+
+    LaunchedEffect(hasPermission) {
+        if (hasPermission) {
+            try {
+                Log.d("WebRTC","Setting up WebRTC")
+                webRTCManager.createLocalStream()
+                Log.d("WebRTC","Local stream created")
+
+                if (isCaller) {
+                    Log.d("WebRTC","I am caller - initiating")
+                    webRTCManager.setCallerName(otherUserName)
+                    webRTCManager.initiateCall()
+                } else {
+                    Log.d("WebRTC","I am receiver - waiting")
+                }
+            } catch (e: Exception) {
+                Log.e("WebRTC", "Error initializing call: ${e.message}")
+            }
         }
     }
 
     DisposableEffect(Unit) {
-        try {
-            Log.d("WebRTC","Setting up WebRTC")
-            webRTCManager.createLocalStream()
-            Log.d("WebRTC","Local stream created")
-
-            if (isCaller) {
-                Log.d("WebRTC","I am caller - initiating")
-                webRTCManager.setCallerName(otherUserId)
-                webRTCManager.initiateCall()
-            } else {
-                Log.d("WebRTC","I am receiver - waiting")
-            }
-        } catch (e: Exception) {
-            Log.e("WebRTC", "Error initializing call: ${e.message}")
-            e.printStackTrace()
-        }
-
         onDispose {
-            Log.d("WebRTC","Disposing WebRTC")
+            Log.d("WebRTC","Disposing WebRTC Screen")
             try {
                 webRTCManager.disconnect()
             } catch (e: Exception) {
@@ -147,7 +180,7 @@ fun WebRTCCallScreen(
 
     if (isIncomingCall && !callAccepted) {
         IncomingCallScreen(
-            callerName = otherUserName,
+            callerName = currentUserId,
             onAccept = {
                 Log.d("WebRTC","Call accepted")
                 callAccepted = true
@@ -156,7 +189,7 @@ fun WebRTCCallScreen(
             },
             onReject = {
                 Log.d("WebRTC","Call rejected!")
-                webRTCManager.endCall()
+                webRTCManager.endCall(rejected = true)
                 onCallEnded()
             }
         )
@@ -206,11 +239,6 @@ fun WebRTCCallScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-//                CircularProgressIndicator(
-//                    modifier = Modifier.size(24.dp),
-//                    color = if (isCallActive) Color.Green else Color.Yellow,
-//                    strokeWidth = 2.dp
-//                )
                 BrutalLoader(
                     modifier = Modifier
                 )

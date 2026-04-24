@@ -128,10 +128,14 @@ fun addWebRTCScreen(navHostController: NavHostController, navGraphBuilder: NavGr
 
         WebRTCCallScreen(
             chatId = chatId,
-            otherUserName = userName,
             otherUserId = otherUserid,
+            otherUserName = userName,
             isCaller = isCaller,
-            onCallEnded = { navHostController.popBackStack() }
+            onCallEnded = { navHostController.navigate(NavRoute.Home.path){
+                popUpTo(NavRoute.Home.path){
+                    inclusive = false
+                }
+            } }
         )
     }
 }
