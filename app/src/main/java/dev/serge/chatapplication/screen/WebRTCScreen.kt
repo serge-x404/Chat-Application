@@ -1,7 +1,11 @@
 package dev.serge.chatapplication.screen
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
 import dev.serge.chatapplication.WebRTCManager
 import dev.serge.chatapplication.screen.neobrut.BrutalButton
@@ -47,6 +52,21 @@ fun WebRTCCallScreen(
     onCallEnded: () -> Unit
 ) {
     val context = LocalContext.current
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {isGranted->
+        Log.d("WebRTC","Microphone permission: $isGranted")
+    }
+
+    LaunchedEffect(Unit) {
+        if (ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO
+        ) != PackageManager.PERMISSION_GRANTED) {
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
     var connectionState by remember {
@@ -132,6 +152,7 @@ fun WebRTCCallScreen(
                 Log.d("WebRTC","Call accepted")
                 callAccepted = true
                 isIncomingCall = false
+                webRTCManager.acceptCall()
             },
             onReject = {
                 Log.d("WebRTC","Call rejected!")

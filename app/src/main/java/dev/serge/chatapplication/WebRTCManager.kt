@@ -34,13 +34,30 @@ class WebRTCManager(
     private var isAnswerHandled = false
     private var addedIceCandidates = mutableStateListOf<String>()
     private var callerName: String = ""
+    private var pendingIncomingCall = false
+    private var pendingOffer: String? = null
+    private var _onIncomingCall: (() -> Unit)? = null
+    var onIncomingCall: (() -> Unit)?
+        get() = _onIncomingCall
+        set(value)  {
+            _onIncomingCall = value
+            if (pendingIncomingCall && pendingOffer != null) {
+                pendingIncomingCall = false
+                val offer = pendingOffer!!
+                pendingOffer = null
+                value?.invoke()
+                handleIncomingCall(offer)
+            }
+        }
+
+    private var callStarted = false
+    private var isHandleIncomingCall = false
 
 
     var onRemoteStreamAdded: (MediaStream) -> Unit = {}
     var onRemoteStreamRemoved: (MediaStream) -> Unit = {}
     var onConnectionStateChanged: (PeerConnection.IceConnectionState) -> Unit = {}
-//    var onSignalStateChanged: (PeerConnection.SignalingState) -> Unit = {}
-    var onIncomingCall: (() -> Unit)? = null
+    var onCallEnded: (() -> Unit)? = null
 
     private fun generateCallId(user1: String, user2: String): String {
         return listOf(user1,user2).sorted().joinToString("_")
@@ -50,6 +67,7 @@ class WebRTCManager(
     init {
         initializePeerConnectionFactory()
         connectToSignalingServer()
+        listenForCallEnd()
         Log.d("INSAAF","Current: $currentUserId Other: $otherUserId")
     }
 
@@ -90,9 +108,16 @@ class WebRTCManager(
                             offerFrom == otherUserId
                         ) {
                             isOfferHandled = true
-                            Log.d("WebRTC", "Offer from $offerFrom - handling incoming call")
-                            onIncomingCall?.invoke()
-                            handleIncomingCall(offer)
+                            isHandleIncomingCall = true
+                            Log.d("WebRTC", "Offer received")
+                            if (_onIncomingCall != null) {
+                                _onIncomingCall?.invoke()
+                                handleIncomingCall(offer)
+                            } else {
+                                Log.d("WebRTC","No callback yet")
+                                pendingIncomingCall = true
+                                pendingOffer = offer
+                            }
                         }
 
                         val answer = callData["answer"] as? String
@@ -115,11 +140,6 @@ class WebRTCManager(
                                         val sdp = candidate["candidate"] as? String
                                         val sdpMid = candidate["sdpMid"] as? String
                                         val sdpMLineIndex = (candidate["sdpMLineIndex"] as? Long)?.toInt()
-//                                        val iceCandidate = IceCandidate(
-//                                            candidate["sdpMid"] as String,
-//                                            (candidate["sdpMLineIndex"] as Long).toInt(),
-//                                            candidate["candidate"] as String
-//                                        )
                                         if (sdp != null && sdpMid != null && sdpMLineIndex != null) {
                                             val iceCandidate = IceCandidate(sdpMid,sdpMLineIndex,sdp)
                                             peerConnection?.addIceCandidate(iceCandidate)
@@ -154,6 +174,7 @@ class WebRTCManager(
 
             val audioSource = peerConnectionFactory.createAudioSource(audioConstraints)
             audioTrack = peerConnectionFactory.createAudioTrack("audio",audioSource)
+            audioTrack?.setEnabled(true)
 
             localMediaStream = peerConnectionFactory.createLocalMediaStream("localStream")
             localMediaStream?.addTrack(audioTrack)
@@ -170,15 +191,6 @@ class WebRTCManager(
             PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
             PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer()
         )
-
-        val rtcConfig = PeerConnection.RTCConfiguration(iceServers)
-
-        val mediaConstraints = MediaConstraints().apply {
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio","true"))
-            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo","false"))
-        }
-
-
         peerConnection = peerConnectionFactory.createPeerConnection(
             iceServers,
             object : PeerConnection.Observer {
@@ -250,7 +262,9 @@ class WebRTCManager(
             }
             createPeerConnection()
 
-            peerConnection?.addTrack(audioTrack)
+            audioTrack?.let { track ->
+                val result = peerConnection?.addTrack(track)
+            }
 
             peerConnection?.createOffer(
                 object : SdpObserver {
@@ -290,9 +304,13 @@ class WebRTCManager(
             createPeerConnection()
             Log.d("WebRTC","Connection created for receiver")
 
-            localMediaStream?.audioTracks?.forEach { audioTrack ->
-                peerConnection?.addTrack(audioTrack)
-                Log.d("WebRTC","Audio track added")
+//            localMediaStream?.audioTracks?.forEach { audioTrack ->
+//                peerConnection?.addTrack(audioTrack)
+//                Log.d("WebRTC","Audio track added")
+//            }
+
+            audioTrack?.let { track ->
+                val result = peerConnection?.addTrack(track)
             }
 
             val sessionDescription = SessionDescription(
@@ -305,7 +323,6 @@ class WebRTCManager(
             peerConnection?.setRemoteDescription(
                 object : SdpObserver {
                     override fun onSetSuccess() {
-                        createAnswer()
                     }
 
                     override fun onCreateFailure(s: String) {
@@ -324,6 +341,24 @@ class WebRTCManager(
         } catch (e: Exception) {
             Log.e("WebRTC","Error handling incoming call: ${e.message}")
         }
+    }
+
+    fun acceptCall() {
+        Log.d("WebRTC","Call accepted creating answer")
+        createAnswer()
+    }
+
+    private fun listenForCallEnd() {
+        db.child("webrtc_calls").child(callId)
+            .addValueEventListener(object : ValueEventListener{
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (callStarted && !snapshot.exists()) {
+                        Log.d("WebRTC","Call ended by other user")
+                        onCallEnded?.invoke()
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
     }
 
     private fun createAnswer() {
@@ -382,6 +417,7 @@ class WebRTCManager(
     }
 
     private fun sendOffer(offer: String) {
+        callStarted = true
         val updates = mapOf(
             "offer" to offer,
             "offerFrom" to currentUserId,
@@ -395,11 +431,19 @@ class WebRTCManager(
             "chatId" to callId,
             "timestamp" to System.currentTimeMillis()
         )
-        db.child("webrtc_calls").child(otherUserId).setValue(notification)
-        Log.d("WebRTC","Offer and notification sent to $otherUserId")
+        db.child("incoming_calls")
+            .child(otherUserId).setValue(notification)
+            .addOnSuccessListener {
+                Log.d("WebRTC","Incoming call from $otherUserId")
+            }
+            .addOnFailureListener {
+                Log.e("WebRTC","Failed to send notification ${it.message}")
+            }
+        Log.d("WebRTC","Offer sent to $otherUserId")
     }
 
     private fun sendAnswer(answer: String) {
+        callStarted = true
         val updates = mapOf(
             "answer" to answer,
             "answerFrom" to currentUserId,
@@ -433,6 +477,7 @@ class WebRTCManager(
     fun endCall() {
         try {
             db.child("webrtc_calls").child(callId).removeValue()
+            db.child("incoming_calls").child(otherUserId).removeValue()
             disconnect()
             Log.d("WebRTC","Call ended")
         } catch (e: Exception) {
