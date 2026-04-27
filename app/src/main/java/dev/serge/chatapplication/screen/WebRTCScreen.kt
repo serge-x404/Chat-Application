@@ -58,6 +58,7 @@ fun WebRTCCallScreen(
 ) {
     val context = LocalContext.current
     val localView = remember { SurfaceViewRenderer(context) }
+    val remoteView = remember { SurfaceViewRenderer(context) }
 
     var hasPermission by remember {
         mutableStateOf(
@@ -102,6 +103,7 @@ fun WebRTCCallScreen(
 
     val eglBaseContext by webRTCManager._eglBaseContext.collectAsState()
     val videoTrack by webRTCManager._videoTrack.collectAsState()
+    val remoteVideoTrack by webRTCManager._remoteVideoTrack.collectAsState()
 
     LaunchedEffect(eglBaseContext) {
         if (eglBaseContext != null) {
@@ -109,6 +111,10 @@ fun WebRTCCallScreen(
             localView.setMirror(true)
             localView.setEnableHardwareScaler(true)
             localView.setZOrderOnTop(true)
+
+            remoteView.init(eglBaseContext, null)
+            remoteView.setMirror(false)
+            remoteView.setEnableHardwareScaler(true)
         }
     }
 
@@ -118,11 +124,19 @@ fun WebRTCCallScreen(
         } catch (_: Exception) {}
     }
 
+    LaunchedEffect(remoteVideoTrack) {
+        try {
+            remoteVideoTrack?.addSink(remoteView)
+        } catch (_: Exception) {}
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             try {
                 localView.clearImage()
                 localView.release()
+                remoteView.clearImage()
+                remoteView.release()
             } catch (_: Exception) {}
         }
     }
@@ -228,106 +242,100 @@ fun WebRTCCallScreen(
         return
     }
 
-    Column(
+    androidx.compose.foundation.layout.Box(
         modifier = Modifier
             .fillMaxSize()
-            .systemBarsPadding()
-            .navigationBarsPadding()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(Color.Black)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = otherUserName.uppercase(),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onBackground
-            )
+        // Remote Video (Full Screen)
+        AndroidView(
+            factory = { remoteView },
+            modifier = Modifier.fillMaxSize()
+        )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = getConnectionStateText(connectionState),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = getConnectionStateColor(connectionState)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-//            Row(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .background(
-//                        MaterialTheme.colorScheme.surfaceContainer,
-//                        shape = RoundedCornerShape(8.dp)
-//                    )
-//                    .padding(12.dp),
-//                horizontalArrangement = Arrangement.spacedBy(12.dp),
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                BrutalLoader(
-//                    modifier = Modifier
-//                )
-//
-//                Column(modifier = Modifier.weight(1f)) {
-//                    Text(
-//                        text = if (isCallActive) "Connected" else "Connecting...",
-//                        fontWeight = FontWeight.Bold,
-//                        fontSize = 12.sp
-//                    )
-//                    Text(
-//                        text = "Signaling: $signalingState",
-//                        fontWeight = FontWeight.Normal,
-//                        fontSize = 10.sp,
-//                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-//                    )
-//                }
-//            }
-            AndroidView(factory = {localView}, modifier = Modifier.size(140.dp).padding(12.dp))
-        }
-
-        if (isCallActive) {
-            Text(
-                text = formatCallDuration(callDuration),
-                fontSize = 48.sp,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
+        // Overlay Content
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .fillMaxSize()
+                .systemBarsPadding()
+                .navigationBarsPadding()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            BrutalButton(
-                text = if (isMuted) "UNMUTE" else "MUTE",
-                onClick = {
-                    isMuted = !isMuted
-                    webRTCManager.setMicrophoneEnabled(!isMuted)
-                },
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                color = if (isMuted) MaterialTheme.colorScheme.error
-                else MaterialTheme.colorScheme.tertiary
-            )
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = otherUserName.uppercase(),
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
+                )
 
-            BrutalButton(
-                text = "END CALL",
-                onClick = {
-                    webRTCManager.endCall()
-                    onCallEnded()
-                },
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.error
-            )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = getConnectionStateText(connectionState),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = getConnectionStateColor(connectionState)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Local Video (PiP)
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .size(120.dp, 180.dp)
+                        .background(Color.DarkGray, RoundedCornerShape(12.dp))
+                ) {
+                    AndroidView(
+                        factory = { localView },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+
+            if (isCallActive) {
+                Text(
+                    text = formatCallDuration(callDuration),
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color.White
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                BrutalButton(
+                    text = if (isMuted) "UNMUTE" else "MUTE",
+                    onClick = {
+                        isMuted = !isMuted
+                        webRTCManager.setMicrophoneEnabled(!isMuted)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = if (isMuted) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.tertiary
+                )
+
+                BrutalButton(
+                    text = "END CALL",
+                    onClick = {
+                        webRTCManager.endCall()
+                        onCallEnded()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }
