@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -88,7 +89,6 @@ fun WebRTCCallScreen(
     }
     var isMuted by remember { mutableStateOf(false) }
     var isCallActive by remember { mutableStateOf(false) }
-    var signalingState by remember { mutableStateOf(PeerConnection.SignalingState.STABLE) }
     var callDuration by remember { mutableStateOf(0) }
     var isIncomingCall by remember { mutableStateOf(false) }
     var callAccepted by remember { mutableStateOf(false) }
@@ -242,7 +242,7 @@ fun WebRTCCallScreen(
         return
     }
 
-    androidx.compose.foundation.layout.Box(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
@@ -286,7 +286,7 @@ fun WebRTCCallScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Local Video (PiP)
-                androidx.compose.foundation.layout.Box(
+                Box(
                     modifier = Modifier
                         .align(Alignment.End)
                         .size(120.dp, 180.dp)
