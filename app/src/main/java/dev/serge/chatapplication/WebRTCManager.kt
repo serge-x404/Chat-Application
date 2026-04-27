@@ -7,7 +7,16 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import org.webrtc.AudioSource
+import org.webrtc.AudioTrack
+import org.webrtc.Camera1Enumerator
+import org.webrtc.CameraVideoCapturer
 import org.webrtc.DataChannel
+import org.webrtc.DefaultVideoDecoderFactory
+import org.webrtc.DefaultVideoEncoderFactory
+import org.webrtc.EglBase
 import org.webrtc.IceCandidate
 import org.webrtc.MediaConstraints
 import org.webrtc.MediaStream
@@ -16,6 +25,10 @@ import org.webrtc.PeerConnectionFactory
 import org.webrtc.RtpReceiver
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
+import org.webrtc.SurfaceTextureHelper
+import org.webrtc.VideoCapturer
+import org.webrtc.VideoSource
+import org.webrtc.VideoTrack
 
 class WebRTCManager(
     context: Context,
@@ -24,10 +37,20 @@ class WebRTCManager(
 ) {
     private val applicationContext = context
 //    lateinit var onSignalingStateChanged: Any
-    private lateinit var peerConnectionFactory: PeerConnectionFactory
+    private var peerConnectionFactory: PeerConnectionFactory? = null
     private var peerConnection: PeerConnection? = null
-    private var audioSource: org.webrtc.AudioSource? = null
-    private var audioTrack: org.webrtc.AudioTrack? = null
+    private var audioSource: AudioSource? = null
+    private var audioTrack: AudioTrack? = null
+    private var videoSource: VideoSource? = null
+    private var videoTrack = MutableStateFlow<VideoTrack?>(null)
+    private var localVideoTrack: VideoTrack? =  null
+    var _videoTrack = videoTrack.asStateFlow()
+//    private var cameraCapture: CameraVideoCapturer? = null
+    private var videoCapturer: VideoCapturer? = null
+    private var surfaceTexture: SurfaceTextureHelper? = null
+    lateinit var eglBase: EglBase
+    private var eglBaseContext = MutableStateFlow<EglBase.Context?>(null)
+    var _eglBaseContext = eglBaseContext.asStateFlow()
     private var localMediaStream: MediaStream? = null
     private val db = FirebaseDatabase.getInstance().reference
 
@@ -57,7 +80,7 @@ class WebRTCManager(
 
     private var callStarted = false
     private var isHandleIncomingCall = false
-
+    private var isFrontCamera = true
 
     var onRemoteStreamAdded: (MediaStream) -> Unit = {}
     var onRemoteStreamRemoved: (MediaStream) -> Unit = {}
@@ -84,8 +107,13 @@ class WebRTCManager(
 
             PeerConnectionFactory.initialize(options)
 
+            eglBase = EglBase.create()
+            eglBaseContext.value = eglBase.eglBaseContext
+
             peerConnectionFactory = PeerConnectionFactory.builder()
                 .setOptions(PeerConnectionFactory.Options())
+                .setVideoEncoderFactory(DefaultVideoEncoderFactory(eglBaseContext.value,true,true))
+                .setVideoDecoderFactory(DefaultVideoDecoderFactory(eglBaseContext.value))
                 .createPeerConnectionFactory()
             Log.d("WebRTC","PeerConnectionFactory Initialized")
         } catch (e: Exception) {
@@ -185,11 +213,13 @@ class WebRTCManager(
                 mandatory.add(MediaConstraints.KeyValuePair("autoGainControl","true"))
             }
 
-            audioSource = peerConnectionFactory.createAudioSource(audioConstraints)
-            audioTrack = peerConnectionFactory.createAudioTrack("audio", audioSource)
+            audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
+            audioTrack = peerConnectionFactory?.createAudioTrack("audio", audioSource)
             audioTrack?.setEnabled(true)
 
-            localMediaStream = peerConnectionFactory.createLocalMediaStream("localStream")
+            startLocalVideo()
+
+            localMediaStream = peerConnectionFactory?.createLocalMediaStream("localStream")
             localMediaStream?.addTrack(audioTrack)
             Log.d("WebRTC","Local stream created")
             return localMediaStream!!
@@ -205,7 +235,7 @@ class WebRTCManager(
             PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
             PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer()
         )
-        peerConnection = peerConnectionFactory.createPeerConnection(
+        peerConnection = peerConnectionFactory?.createPeerConnection(
             iceServers,
             object : PeerConnection.Observer {
                 override fun onSignalingChange(signalingState: PeerConnection.SignalingState) {
@@ -276,9 +306,7 @@ class WebRTCManager(
             }
             createPeerConnection()
 
-            audioTrack?.let { track ->
-                val result = peerConnection?.addTrack(track)
-            }
+            peerConnection?.addTrack(audioTrack)
 
             peerConnection?.createOffer(
                 object : SdpObserver {
@@ -487,6 +515,50 @@ class WebRTCManager(
             .setValue(candidateData)
     }
 
+    fun startCameraCapturer(): CameraVideoCapturer? {
+        val enumerator = Camera1Enumerator(true)
+        for (devices in enumerator.deviceNames) {
+            if (enumerator.isFrontFacing(devices)) {
+                return enumerator.createCapturer(devices, null)
+            }
+        }
+        return null
+    }
+
+    fun startLocalVideo(): VideoTrack? {
+        if (peerConnectionFactory == null) {
+            return null
+        }
+        if (localVideoTrack != null) {
+            videoCapturer?.startCapture(720,1280,30)
+            return localVideoTrack
+        }
+        if (videoCapturer == null) {
+            videoCapturer = startCameraCapturer()
+        }
+        if (surfaceTexture == null) {
+            surfaceTexture = SurfaceTextureHelper.create(
+                "VideoCall",
+                eglBase.eglBaseContext
+            )
+        }
+
+        if(videoSource == null) {
+            videoSource = peerConnectionFactory?.createVideoSource(false)
+        }
+
+        videoCapturer?.initialize(surfaceTexture, applicationContext, videoSource?.capturerObserver)
+        videoCapturer?.startCapture(720,1280,30)
+
+        localVideoTrack = peerConnectionFactory?.createVideoTrack("videoTrack",videoSource)
+        localVideoTrack?.setEnabled(true)
+        peerConnection?.addTrack(localVideoTrack)
+
+        videoTrack.value = localVideoTrack!!
+
+        return localVideoTrack
+    }
+
     fun setCallerName(name: String) {
         callerName = name
     }
@@ -544,7 +616,8 @@ class WebRTCManager(
             localMediaStream?.dispose()
             localMediaStream = null
 
-            peerConnectionFactory.dispose()
+            peerConnectionFactory?.dispose()
+            peerConnectionFactory = null
 
             Log.d("WebRTC","Disconnected and disposed")
         } catch (e: Exception) {

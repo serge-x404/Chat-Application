@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
 import dev.serge.chatapplication.WebRTCManager
@@ -43,6 +46,7 @@ import dev.serge.chatapplication.screen.neobrut.BrutalLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.webrtc.PeerConnection
+import org.webrtc.SurfaceViewRenderer
 
 @Composable
 fun WebRTCCallScreen(
@@ -53,6 +57,7 @@ fun WebRTCCallScreen(
     onCallEnded: () -> Unit
 ) {
     val context = LocalContext.current
+    val localView = remember { SurfaceViewRenderer(context) }
 
     var hasPermission by remember {
         mutableStateOf(
@@ -93,6 +98,33 @@ fun WebRTCCallScreen(
             currentUserId = currentUserId,
             otherUserId = otherUserId
         )
+    }
+
+    val eglBaseContext by webRTCManager._eglBaseContext.collectAsState()
+    val videoTrack by webRTCManager._videoTrack.collectAsState()
+
+    LaunchedEffect(eglBaseContext) {
+        if (eglBaseContext != null) {
+            localView.init(eglBaseContext, null)
+            localView.setMirror(true)
+            localView.setEnableHardwareScaler(true)
+            localView.setZOrderOnTop(true)
+        }
+    }
+
+    LaunchedEffect(videoTrack) {
+        try {
+            videoTrack?.addSink(localView)
+        } catch (_: Exception) {}
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                localView.clearImage()
+                localView.release()
+            } catch (_: Exception) {}
+        }
     }
 
     val scope = rememberCoroutineScope()
@@ -228,35 +260,36 @@ fun WebRTCCallScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        MaterialTheme.colorScheme.surfaceContainer,
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                BrutalLoader(
-                    modifier = Modifier
-                )
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (isCallActive) "Connected" else "Connecting...",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = "Signaling: $signalingState",
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-                    )
-                }
-            }
+//            Row(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .background(
+//                        MaterialTheme.colorScheme.surfaceContainer,
+//                        shape = RoundedCornerShape(8.dp)
+//                    )
+//                    .padding(12.dp),
+//                horizontalArrangement = Arrangement.spacedBy(12.dp),
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                BrutalLoader(
+//                    modifier = Modifier
+//                )
+//
+//                Column(modifier = Modifier.weight(1f)) {
+//                    Text(
+//                        text = if (isCallActive) "Connected" else "Connecting...",
+//                        fontWeight = FontWeight.Bold,
+//                        fontSize = 12.sp
+//                    )
+//                    Text(
+//                        text = "Signaling: $signalingState",
+//                        fontWeight = FontWeight.Normal,
+//                        fontSize = 10.sp,
+//                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+//                    )
+//                }
+//            }
+            AndroidView(factory = {localView}, modifier = Modifier.size(140.dp).padding(12.dp))
         }
 
         if (isCallActive) {
