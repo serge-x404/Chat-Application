@@ -77,7 +77,7 @@ fun BrutalGroupBar(
                         .clickable(
                             interactionSource = backButton,
                             indication = null
-                        ) {it()}
+                        ) { it() }
                         .background(MaterialTheme.colorScheme.surface)
                 ) {
                     Box(
@@ -101,7 +101,13 @@ fun BrutalGroupBar(
             Text(
                 text = title.uppercase(),
                 fontWeight = FontWeight.Black,
-                fontSize = 20.sp,
+                fontSize = 20.sp
+            )
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = "(${memberCount.toString().uppercase()} members)",
+                fontWeight = FontWeight.Black,
+                fontSize = 14.sp,
                 modifier = Modifier.weight(1f)
             )
 

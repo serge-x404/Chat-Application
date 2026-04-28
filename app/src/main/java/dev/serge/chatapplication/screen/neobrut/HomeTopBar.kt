@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -137,20 +138,13 @@ fun BrutalHomeTopBar(
                     )
                 }
             }
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(top = 16.dp)
+                    .padding(horizontal = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                BrutalButton(
-                    text = "CANCEL",
-                    onClick = {showBottomSheet = false},
-                    modifier = Modifier,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
                 BrutalButton(
                     text = if (isCreating) "CREATING..." else "CREATE",
                     onClick = {
@@ -179,6 +173,12 @@ fun BrutalHomeTopBar(
                     },
                     modifier = Modifier,
                     color = MaterialTheme.colorScheme.tertiary,
+                )
+                BrutalButton(
+                    text = "CANCEL",
+                    onClick = {showBottomSheet = false},
+                    modifier = Modifier,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             Spacer(Modifier.height(12.dp))

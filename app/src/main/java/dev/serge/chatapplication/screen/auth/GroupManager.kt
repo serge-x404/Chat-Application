@@ -7,6 +7,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.util.UUID
+import kotlin.collections.forEach
 
 class GroupManager {
 
@@ -22,22 +23,40 @@ class GroupManager {
     ) {
         try {
             val groupId = UUID.randomUUID().toString()
-            val members = mutableMapOf<String, Boolean>()
+            val allMembers = (memberId + currentUid).distinct()
+            val members = mutableMapOf<String, GroupMember>()
+            var fetchedCount = 0
 
-            members[currentUid] = true
-            
-            memberId.forEach { members[it] = true}
+            if (allMembers.isEmpty()) {
+                onError("No members selected")
+                return
+            }
 
-            val group = Group(
-                id = groupId,
-                name = name,
-                createdBy = currentUid,
-                createdAt = System.currentTimeMillis(),
-                members = members
-            )
-            db.child("groups").child(groupId).setValue(group)
-                .addOnSuccessListener { onSuccess(groupId) }
-                .addOnFailureListener { onError(it.message ?: "Failed to create group") }
+            allMembers.forEach { uid ->
+                db.child("users").child(uid).child("userName")
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        val userName = snapshot.getValue(String::class.java) ?: "Unknown"
+                        members[uid] = GroupMember(uid, userName)
+                        fetchedCount++
+
+                        if (fetchedCount == allMembers.size) {
+                            val group = Group(
+                                id = groupId,
+                                name = name,
+                                createdBy = currentUid,
+                                createdAt = System.currentTimeMillis(),
+                                members = members
+                            )
+                            db.child("groups").child(groupId).setValue(group)
+                                .addOnSuccessListener { onSuccess(groupId) }
+                                .addOnFailureListener { onError(it.message ?: "Failed to create group") }
+                        }
+                    }
+                    .addOnFailureListener {
+                        onError("Failed to fetch user info for $uid")
+                    }
+            }
         } catch (e: Exception) {
             onError(e.message ?: "Error creating group")
         }
@@ -47,9 +66,17 @@ class GroupManager {
         db.child("groups")
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val groups = snapshot.children
-                        .mapNotNull { it.getValue(Group::class.java) }
-                        .filter { it.members.containsKey(currentUid) }
+                    val groups = mutableListOf<Group>()
+                    snapshot.children.forEach { child ->
+                        try {
+                            val group = child.getValue(Group::class.java)
+                            if (group != null && group.members.containsKey(currentUid)) {
+                                groups.add(group)
+                            }
+                        } catch (e: Exception) {
+                            Log.e("Group", "Error parsing group ${child.key}: ${e.message}")
+                        }
+                    }
                     onGroups(groups)
                 }
                 override fun onCancelled(error: DatabaseError) {
@@ -137,7 +164,12 @@ class GroupManager {
         db.child("groups").child(groupId)
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    onGroup(snapshot.getValue(Group::class.java))
+                    try {
+                        onGroup(snapshot.getValue(Group::class.java))
+                    } catch (e: Exception) {
+                        Log.e("Group", "Error parsing group $groupId: ${e.message}")
+                        onGroup(null)
+                    }
                 }
 
                 override fun onCancelled(error: DatabaseError) {

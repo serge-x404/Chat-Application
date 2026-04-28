@@ -54,7 +54,6 @@ fun UserScreen(
     var chatPreview by remember { mutableStateOf<List<ChatPreview>>(emptyList()) }
     var groupPreview by remember { mutableStateOf<List<GroupPreview>>(emptyList()) }
     val groupManager = remember { GroupManager() }
-    var groups by remember { mutableStateOf<List<Group>>(emptyList()) }
 
     LaunchedEffect(Unit) {
         var chatsLoaded = false

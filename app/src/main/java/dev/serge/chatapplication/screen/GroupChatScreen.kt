@@ -57,7 +57,7 @@ fun GroupChatScreen(
         }
 
         val db = FirebaseDatabase.getInstance().reference
-        db.child("users").child(currentUid).child("name")
+        db.child("users").child(currentUid).child("userName")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val name = snapshot.getValue(String::class.java)

@@ -42,6 +42,14 @@ fun BrutalGroupCard(
                 .widthIn(max = 250.dp)
         ) {
             Column {
+                if (!isMe) {
+                    Text(
+                        text = message.senderName,
+                        color = Color.Black.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp
+                    )
+                }
                 Text(
                     text = message.text,
                     color = Color.Black,
