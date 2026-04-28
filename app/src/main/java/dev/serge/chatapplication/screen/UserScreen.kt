@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +42,8 @@ import dev.serge.chatapplication.screen.auth.ChatPreview
 import dev.serge.chatapplication.screen.auth.GroupManager
 import dev.serge.chatapplication.screen.auth.GroupPreview
 import dev.serge.chatapplication.screen.neobrut.BrutalLoader
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Date
 import java.util.Locale
 

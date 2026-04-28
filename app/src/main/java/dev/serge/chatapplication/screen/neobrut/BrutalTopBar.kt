@@ -89,7 +89,7 @@ fun BrutalTopBar(
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            "Back",
+                            "Back".uppercase(),
                             fontWeight = FontWeight.Black
                         )
                     }
@@ -126,7 +126,7 @@ fun BrutalTopBar(
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "CALL",
+                        text = "Call".uppercase(),
                         color = Color.Black,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp

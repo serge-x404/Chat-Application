@@ -90,7 +90,7 @@ fun BrutalGroupBar(
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            "Back",
+                            "Back".uppercase(),
                             fontWeight = FontWeight.Black
                         )
                     }
@@ -131,7 +131,7 @@ fun BrutalGroupBar(
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = if (isOnline) "ONLINE" else "OFFLINE",
+                        text = "Call".uppercase(),
                         color = Color.Black,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
