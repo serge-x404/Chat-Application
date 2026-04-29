@@ -306,22 +306,6 @@ fun WebRTCCallScreen(
                 }
             }
 
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Local Video (PiP)
-//                Box(
-//                    modifier = Modifier
-//                        .align(Alignment.End)
-//                        .size(120.dp, 180.dp)
-//                        .background(Color.DarkGray, RoundedCornerShape(12.dp))
-//                ) {
-//                    AndroidView(
-//                        factory = { localView },
-//                        modifier = Modifier.fillMaxSize()
-//                    )
-//                }
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
