@@ -253,6 +253,19 @@ fun WebRTCCallScreen(
             modifier = Modifier.fillMaxSize()
         )
 
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 150.dp, end = 12.dp)
+                .size(120.dp, 180.dp)
+                .background(Color.DarkGray, RoundedCornerShape(12.dp))
+        ) {
+            AndroidView(
+                factory = { localView },
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
         // Overlay Content
         Column(
             modifier = Modifier
@@ -274,7 +287,7 @@ fun WebRTCCallScreen(
                     color = Color.White
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = getConnectionStateText(connectionState),
@@ -283,30 +296,31 @@ fun WebRTCCallScreen(
                     color = getConnectionStateColor(connectionState)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Local Video (PiP)
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .size(120.dp, 180.dp)
-                        .background(Color.DarkGray, RoundedCornerShape(12.dp))
-                ) {
-                    AndroidView(
-                        factory = { localView },
-                        modifier = Modifier.fillMaxSize()
+                if (isCallActive) {
+                    Text(
+                        text = formatCallDuration(callDuration),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White
                     )
                 }
             }
 
-            if (isCallActive) {
-                Text(
-                    text = formatCallDuration(callDuration),
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White
-                )
-            }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Local Video (PiP)
+//                Box(
+//                    modifier = Modifier
+//                        .align(Alignment.End)
+//                        .size(120.dp, 180.dp)
+//                        .background(Color.DarkGray, RoundedCornerShape(12.dp))
+//                ) {
+//                    AndroidView(
+//                        factory = { localView },
+//                        modifier = Modifier.fillMaxSize()
+//                    )
+//                }
 
             Column(
                 modifier = Modifier
