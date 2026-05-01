@@ -70,6 +70,15 @@ fun WebRTCCallScreen(
         )
     }
 
+    var cameraPermissions by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) {isGranted->
@@ -77,9 +86,18 @@ fun WebRTCCallScreen(
         Log.d("WebRTC","Microphone permission: $isGranted")
     }
 
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {isGranted->
+        cameraPermissions = isGranted
+    }
+
     LaunchedEffect(Unit) {
         if (!hasPermission) {
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+        if (!cameraPermissions) {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
@@ -247,94 +265,111 @@ fun WebRTCCallScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Remote Video (Full Screen)
-        AndroidView(
-            factory = { remoteView },
-            modifier = Modifier.fillMaxSize()
-        )
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(bottom = 150.dp, end = 12.dp)
-                .size(120.dp, 180.dp)
-                .background(Color.DarkGray, RoundedCornerShape(12.dp))
-        ) {
+//        if (isIncomingCall && !callAccepted) {
+//            IncomingCallScreen(
+//                callerName = currentUserId,
+//                onAccept = {
+//                    Log.d("WebRTC","Call accepted")
+//                    callAccepted = true
+//                    isIncomingCall = false
+//                    webRTCManager.acceptCall()
+//                },
+//                onReject = {
+//                    Log.d("WebRTC","Call rejected!")
+//                    webRTCManager.endCall(rejected = true)
+//                    onCallEnded()
+//                }
+//            )
+//        } else {
+            // Remote Video (Full Screen)
             AndroidView(
-                factory = { localView },
+                factory = { remoteView },
                 modifier = Modifier.fillMaxSize()
             )
-        }
 
-        // Overlay Content
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .systemBarsPadding()
-                .navigationBarsPadding()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(bottom = 150.dp, end = 12.dp)
+                    .size(120.dp, 180.dp)
+                    .background(Color.DarkGray, RoundedCornerShape(12.dp))
+            ) {
+                AndroidView(
+                    factory = { localView },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            // Overlay Content
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = otherUserName.uppercase(),
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color.White
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = getConnectionStateText(connectionState),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = getConnectionStateColor(connectionState)
-                )
-
-                if (isCallActive) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     Text(
-                        text = formatCallDuration(callDuration),
-                        fontSize = 24.sp,
+                        text = otherUserName.uppercase(),
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White
                     )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = getConnectionStateText(connectionState),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = getConnectionStateColor(connectionState)
+                    )
+
+                    if (isCallActive) {
+                        Text(
+                            text = formatCallDuration(callDuration),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    BrutalButton(
+                        text = if (isMuted) "UNMUTE" else "MUTE",
+                        onClick = {
+                            isMuted = !isMuted
+                            webRTCManager.setMicrophoneEnabled(!isMuted)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = if (isMuted) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.tertiary
+                    )
+
+                    BrutalButton(
+                        text = "END CALL",
+                        onClick = {
+                            webRTCManager.endCall()
+                            onCallEnded()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                BrutalButton(
-                    text = if (isMuted) "UNMUTE" else "MUTE",
-                    onClick = {
-                        isMuted = !isMuted
-                        webRTCManager.setMicrophoneEnabled(!isMuted)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = if (isMuted) MaterialTheme.colorScheme.error
-                    else MaterialTheme.colorScheme.tertiary
-                )
-
-                BrutalButton(
-                    text = "END CALL",
-                    onClick = {
-                        webRTCManager.endCall()
-                        onCallEnded()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
+//        }
     }
 }
 

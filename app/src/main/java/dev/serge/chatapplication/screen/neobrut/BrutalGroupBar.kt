@@ -32,7 +32,7 @@ fun BrutalGroupBar(
     title: String,
     memberCount: Int,
     modifier: Modifier = Modifier,
-    isOnline: Boolean = true,
+    navigateToCall: () -> Unit,
     onBackClick: (() -> Unit)? = null
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -118,7 +118,9 @@ fun BrutalGroupBar(
                     }
                     .clickable(
                         interactionSource = interactionSource
-                    ) {}
+                    ) {
+                        navigateToCall()
+                    }
                     .background(MaterialTheme.colorScheme.surface)
             ) {
                 Box(

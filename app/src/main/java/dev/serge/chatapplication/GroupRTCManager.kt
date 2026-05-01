@@ -1,13 +1,17 @@
 package dev.serge.chatapplication
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.getValue
 import org.webrtc.AudioTrack
 import org.webrtc.Camera1Enumerator
+import org.webrtc.Camera2Enumerator
 import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
@@ -51,6 +55,7 @@ class GroupRTCManager(
 
     var onParticipationJoined: ((String) -> Unit)? = null
     var onParticipationLeft: ((String) -> Unit)? = null
+    var onCallEnded: (() -> Unit)? = null
     var onRemoteVideoTrack: ((String, VideoTrack) -> Unit)? = null
     var onRemoteAudioTrack: ((String, AudioTrack) -> Unit)? = null
 
@@ -90,7 +95,8 @@ class GroupRTCManager(
     fun startLocalVideo(): VideoTrack? {
         if (factory == null) return null
         try {
-            val enumerator = Camera1Enumerator(true)
+            val enumerator = Camera2Enumerator(context)
+//                Camera1Enumerator(true)
             val deviceName = enumerator.deviceNames.firstOrNull {
                 enumerator.isFrontFacing(it)
             } ?:  return null
@@ -110,8 +116,14 @@ class GroupRTCManager(
             )
             videoCapturer?.startCapture(720,1280,30)
 
-            peerConnections.values.forEach { peerConnection ->
-                localAudioTrack?.let { peerConnection.addTrack(it) }
+            localVideoTrack = factory?.createVideoTrack("video_$currentUserId",videoSource)
+            localVideoTrack?.setEnabled(true)
+
+            // Add track to existing connections
+            peerConnections.values.forEach { pc ->
+                try {
+                    localVideoTrack?.let { pc.addTrack(it, listOf("group_stream_$currentUserId")) }
+                } catch (_: Exception) {}
             }
             return localVideoTrack
         } catch (e: Exception) {return null}
@@ -129,6 +141,7 @@ class GroupRTCManager(
     }
 
     fun joinRoom() {
+        if (isDisposed) return
         val participantRef = db.child("groupCalls/$roomId/participants/$currentUserId")
         participantRef.setValue(true)
         participantRef.onDisconnect().removeValue()
@@ -144,6 +157,8 @@ class GroupRTCManager(
                     }
                 }
             }
+            .addOnFailureListener { Log.e("GroupRTC","Failed participants: ${it.message}") }
+        Log.d("GroupRTC","Joined room $roomId as $currentUserId")
     }
 
     private fun createConnection(userId: String): PeerConnection? {
@@ -161,12 +176,16 @@ class GroupRTCManager(
                     receiver: RtpReceiver,
                     mediaStreams: Array<out MediaStream>
                 ) {
-                    when (val track = receiver.track()) {
+                    val track = receiver.track()
+                    Log.d("GroupRTC", "onAddTrack from $userId: ${track?.kind()}")
+                    when (track) {
                         is AudioTrack -> {
+                            track.setEnabled(true)
                             remoteAudioTrack[userId] = track
                             onRemoteAudioTrack?.invoke(userId, track)
                         }
                         is VideoTrack -> {
+                            track.setEnabled(true)
                             remoteVideoTrack[userId] = track
                             onRemoteVideoTrack?.invoke(userId, track)
                         }
@@ -175,10 +194,9 @@ class GroupRTCManager(
                 override fun onSignalingChange(state: PeerConnection.SignalingState) {}
 
                 override fun onIceConnectionChange(state: PeerConnection.IceConnectionState) {
-                    if (state == PeerConnection.IceConnectionState.DISCONNECTED ||
-                        state == PeerConnection.IceConnectionState.CLOSED ||
-                        state == PeerConnection.IceConnectionState.FAILED
-                        ) {
+                    if (isDisposed) return
+                    Log.d("GroupRTC", "Connection state for $userId: $state")
+                    if (state == PeerConnection.IceConnectionState.FAILED) {
                         removeParticipant(userId)
                     }
                 }
@@ -195,19 +213,30 @@ class GroupRTCManager(
 
                 override fun onDataChannel(p0: DataChannel?) {}
 
-                override fun onRenegotiationNeeded() {}
+                override fun onRenegotiationNeeded() {
+                    createOffer(userId)
+                }
             }
-        )
+        ) ?: return null
 
-        localAudioTrack?.let { pc?.addTrack(it) }
-        localVideoTrack?.let { pc?.addTrack(it) }
+        localAudioTrack?.let { 
+            try { pc.addTrack(it, listOf("group_stream_$currentUserId")) } catch (_: Exception) {}
+        }
+        localVideoTrack?.let { 
+            try { pc.addTrack(it, listOf("group_stream_$currentUserId")) } catch (_: Exception) {}
+        }
 
-        peerConnections[userId] = pc!!
+        peerConnections[userId] = pc
         return pc
     }
 
     private fun createOffer(targetUser: String) {
         val pc = peerConnections[targetUser] ?: return
+
+        val constraints = MediaConstraints().apply {
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+        }
 
         pc.createOffer(object : SdpObserver{
             override fun onCreateSuccess(sdp: SessionDescription) {
@@ -218,15 +247,25 @@ class GroupRTCManager(
                 val offer = pc.localDescription?.description ?: return
                 db.child("groupCalls/$roomId/offers/${currentUserId}_$targetUser")
                     .setValue(offer)
+                Log.d("GroupRTC", "Offer sent to $targetUser")
             }
 
-            override fun onCreateFailure(p0: String) {}
-            override fun onSetFailure(p0: String) {}
-        }, MediaConstraints())
+            override fun onCreateFailure(p0: String) {
+                Log.e("GroupRTC", "Create Offer failed: $p0")
+            }
+            override fun onSetFailure(p0: String) {
+                Log.e("GroupRTC", "Set Local Description failed: $p0")
+            }
+        }, constraints)
     }
 
     private fun createAnswer(fromUser: String) {
         val pc = peerConnections[fromUser] ?: return
+
+        val constraints = MediaConstraints().apply {
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveVideo", "true"))
+            mandatory.add(MediaConstraints.KeyValuePair("OfferToReceiveAudio", "true"))
+        }
 
         pc.createAnswer(object : SdpObserver {
             override fun onCreateSuccess(sdp: SessionDescription) {
@@ -237,41 +276,77 @@ class GroupRTCManager(
                 val answer = pc.localDescription?.description ?: return
                 db.child("groupCalls/$roomId/answers/${currentUserId}_$fromUser")
                     .setValue(answer)
+                Log.d("GroupRTC", "Answer sent to $fromUser")
             }
 
+            override fun onCreateFailure(p0: String) {
+                Log.e("GroupRTC", "Create Answer failed: $p0")
+            }
+            override fun onSetFailure(p0: String) {
+                Log.e("GroupRTC", "Set Local Description failed: $p0")
+            }
+        }, constraints)
+    }
+
+    private fun handleRemoteOffer(from: String, offer: String) {
+        createConnection(from)
+        val pc = peerConnections[from] ?: return
+
+        pc.setRemoteDescription(object : SdpObserver {
+            override fun onCreateSuccess(p0: SessionDescription?) {}
+            override fun onSetSuccess() {
+                createAnswer(from)
+            }
+            override fun onCreateFailure(p0: String?) {}
+            override fun onSetFailure(p0: String?) {
+                Log.e("GroupRTC", "Set Remote Offer failed: $p0")
+            }
+        }, SessionDescription(SessionDescription.Type.OFFER, offer))
+    }
+
+    private fun handleRemoteAnswer(from: String, answer: String) {
+        val pc = peerConnections[from] ?: return
+        pc.setRemoteDescription(object : SdpObserver {
+            override fun onCreateSuccess(sdp: SessionDescription) {}
             override fun onCreateFailure(p0: String) {}
-            override fun onSetFailure(p0: String) {}
-        }, MediaConstraints())
+            override fun onSetSuccess() {
+                Log.d("GroupRTC", "Remote Answer set for $from")
+            }
+            override fun onSetFailure(p0: String) {
+                Log.e("GroupRTC", "Set Remote Answer failed: $p0")
+            }
+        }, SessionDescription(SessionDescription.Type.ANSWER, answer))
     }
 
     private fun listenForSignals() {
 
         db.child("groupCalls/$roomId/offers")
-            .addChildEventListener(object : ChildEventListener{
+            .addChildEventListener(object : ChildEventListener {
                 override fun onChildAdded(snapshot: DataSnapshot, prev: String?) {
-                    val key = snapshot.key ?: return
-                    val (from, to) = key.split("_")
-
-                    if (to != currentUserId) return
-
-                    val offer = snapshot.getValue(String::class.java) ?: return
-
-                    createConnection(from)
-                    val pc = peerConnections[from]!!
-
-                    pc.setRemoteDescription(object : SdpObserver{
-                        override fun onSetSuccess() {
-                            createAnswer(from)
-                        }
-
-                        override fun onCreateFailure(p0: String) {}
-                        override fun onCreateSuccess(p0: SessionDescription) {}
-                        override fun onSetFailure(p0: String) {}
-                    }, SessionDescription(SessionDescription.Type.OFFER, offer))
+                    processOffer(snapshot)
                 }
 
-                override fun onChildChanged(p0: DataSnapshot, p1: String?) {}
-                override fun onChildRemoved(p0: DataSnapshot) {}
+                override fun onChildChanged(snapshot: DataSnapshot, prev: String?) {
+                    processOffer(snapshot)
+                }
+
+                private fun processOffer(snapshot: DataSnapshot) {
+                    if (isDisposed) return
+                    val key = snapshot.key ?: return
+                    val parts = key.split("_")
+                    if (parts.size < 2) return
+                    val from = parts[0]
+                    val to = parts[1]
+
+                    if (to != currentUserId) return
+                    val offer = snapshot.getValue(String::class.java) ?: return
+                    handleRemoteOffer(from, offer)
+                }
+
+                override fun onChildRemoved(snapshot: DataSnapshot) {
+                    val userId = snapshot.key ?: return
+                    removeParticipant(userId)
+                }
                 override fun onChildMoved(p0: DataSnapshot, p1: String?) {}
                 override fun onCancelled(p0: DatabaseError) {}
             })
@@ -279,24 +354,25 @@ class GroupRTCManager(
         db.child("groupCalls/$roomId/answers")
             .addChildEventListener(object : ChildEventListener{
                 override fun onChildAdded(snapshot: DataSnapshot, prev: String?) {
-                    val key = snapshot.key ?: return
-                    val (from,to) = key.split("_")
-
-                    if (to != currentUserId) return
-
-                    val answer = snapshot.getValue(String::class.java) ?: return
-
-                    val pc = peerConnections[from] ?: return
-
-                    pc.setRemoteDescription(object : SdpObserver{
-                        override fun onCreateSuccess(sdp: SessionDescription) {}
-                        override fun onCreateFailure(p0: String) {}
-                        override fun onSetSuccess() {}
-                        override fun onSetFailure(p0: String) {}
-                    }, SessionDescription(SessionDescription.Type.ANSWER, answer))
+                    processAnswer(snapshot)
                 }
 
-                override fun onChildChanged(p0: DataSnapshot, p1: String?) {}
+                override fun onChildChanged(snapshot: DataSnapshot, prev: String?) {
+                    processAnswer(snapshot)
+                }
+
+                private fun processAnswer(snapshot: DataSnapshot) {
+                    val key = snapshot.key ?: return
+                    val parts = key.split("_")
+                    if (parts.size < 2) return
+                    val from = parts[0]
+                    val to = parts[1]
+
+                    if (to != currentUserId) return
+                    val answer = snapshot.getValue(String::class.java) ?: return
+                    handleRemoteAnswer(from, answer)
+                }
+
                 override fun onChildMoved(p0: DataSnapshot, p1: String?) {}
                 override fun onChildRemoved(p0: DataSnapshot) {}
                 override fun onCancelled(p0: DatabaseError) {}
@@ -306,19 +382,30 @@ class GroupRTCManager(
             .addChildEventListener(object : ChildEventListener {
                 override fun onChildAdded(snapshot: DataSnapshot, prev: String?) {
                     val key = snapshot.key ?: return
-                    val (from,to) = key.split("_")
+                    val parts = key.split("_")
+                    if (parts.size < 2) return
+                    val from = parts[0]
+                    val to = parts[1]
 
                     if (to != currentUserId) return
 
-                    val data = snapshot.value as? Map<*,*> ?: return
+                    // Listen for candidates under this specific connection node
+                    snapshot.ref.addChildEventListener(object : ChildEventListener {
+                        override fun onChildAdded(candSnap: DataSnapshot, p1: String?) {
+                            val data = candSnap.value as? Map<*,*> ?: return
+                            val sdpMid = data["sdpMid"] as? String ?: return
+                            val sdpMLineIndex = (data["sdpMLineIndex"] as? Number)?.toInt() ?: return
+                            val candidateStr = data["candidate"] as? String ?: return
 
-                    val candidate = IceCandidate(
-                        data["sdpMidp"] as String,
-                        (data["sdpMLineIndex"] as Long).toInt(),
-                        data["candidate"] as String
-                    )
-
-                    peerConnections[from]?.addIceCandidate(candidate)
+                            val candidate = IceCandidate(sdpMid, sdpMLineIndex, candidateStr)
+                            peerConnections[from]?.addIceCandidate(candidate)
+                            Log.d("GroupRTC", "Added ICE candidate from $from")
+                        }
+                        override fun onChildChanged(p0: DataSnapshot, p1: String?) {}
+                        override fun onChildMoved(p0: DataSnapshot, p1: String?) {}
+                        override fun onChildRemoved(p0: DataSnapshot) {}
+                        override fun onCancelled(p0: DatabaseError) {}
+                    })
                 }
 
                 override fun onChildChanged(p0: DataSnapshot, p1: String?) {}
@@ -344,7 +431,9 @@ class GroupRTCManager(
                     val userId = snapshot.key ?: return
                     Log.d("GroupRTC","$userId left")
                     removeParticipant(userId)
-                    onParticipationLeft?.invoke(userId)
+                    
+                    // If anyone leaves, end the call for everyone
+                    onCallEnded?.invoke()
                 }
 
                 override fun onChildChanged(p0: DataSnapshot, p1: String?) {}
@@ -354,25 +443,36 @@ class GroupRTCManager(
     }
 
     private fun removeParticipant(userId: String) {
-        peerConnections[userId]?.close()
-        peerConnections[userId]?.dispose()
-        peerConnections.remove(userId)
-        remoteAudioTrack.remove(userId)
-        remoteVideoTrack.remove(userId)
-        Log.d("GroupRTC","Removed participant: $userId")
+        Handler(Looper.getMainLooper()).post {
+            val pc = peerConnections.remove(userId)
+            if (pc != null) {
+                try {
+                    pc.close()
+                    pc.dispose()
+                } catch (e: Exception) {
+                    Log.e("GroupRTC", "Error closing peer connection for $userId: ${e.message}")
+                }
+                onParticipationLeft?.invoke(userId)
+            }
+            remoteAudioTrack.remove(userId)
+            remoteVideoTrack.remove(userId)
+            Log.d("GroupRTC", "Removed participant: $userId")
+        }
     }
 
     private fun sendIceCandidate(target: String, candidate: IceCandidate) {
         if (isDisposed) return
-        val data = mapOf(
-            "candidate" to candidate.sdp,
-            "sdpMid" to candidate.sdpMid,
-            "sdpMLineIndex" to candidate.sdpMLineIndex
-        )
+        try {
+            val data = mapOf(
+                "candidate" to candidate.sdp,
+                "sdpMid" to candidate.sdpMid,
+                "sdpMLineIndex" to candidate.sdpMLineIndex
+            )
 
-        db.child("groupCalls/$roomId/ice/${currentUserId}_$target")
-            .push()
-            .setValue(data)
+            db.child("groupCalls/$roomId/ice/${currentUserId}_$target")
+                .push()
+                .setValue(data)
+        } catch (_: Exception) {}
     }
 
     fun setMicrophoneEnabled(enabled: Boolean) {
@@ -385,24 +485,37 @@ class GroupRTCManager(
 
     fun leaveRoom() {
         if (isDisposed) return
+        isDisposed = true
         try {
             db.child("groupCalls/$roomId/participants/$currentUserId").removeValue()
-            db.child("groupCalls/$roomId/offers").orderByKey()
-                .startAt(currentUserId).get()
 
             peerConnections.values.forEach {
-                it.close()
-                it.dispose()
+                try {
+                    it.close()
+                    it.dispose()
+                } catch (e: Exception) {
+                    Log.e("GroupRTC","Error while closing connection: ${e.message}")
+                }
             }
+
             peerConnections.clear()
 
-            localAudioTrack?.dispose()
-            localAudioTrack = null
+            try {
+                videoCapturer?.stopCapture()
+            } catch (_: Exception) {}
+            videoCapturer?.dispose()
+            videoCapturer = null
 
+            surfaceTextureHelper?.dispose()
+            surfaceTextureHelper = null
+
+            localVideoTrack?.setEnabled(false)
             localVideoTrack?.dispose()
             localVideoTrack = null
 
-            stopLocalVideo()
+            localAudioTrack?.setEnabled(false)
+            localAudioTrack?.dispose()
+            localAudioTrack = null
 
             factory?.dispose()
             factory = null

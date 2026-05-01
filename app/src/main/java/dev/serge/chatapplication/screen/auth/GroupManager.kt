@@ -178,4 +178,25 @@ class GroupManager {
                 }
             })
     }
+
+    fun notifyGroupCall(groupId: String, groupName: String) {
+        db.child("groups").child(groupId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val group = snapshot.getValue(Group::class.java)
+                    group?.members?.keys?.forEach { memberId ->
+                        if (memberId != currentUid) {
+                            val notification = mapOf(
+                                "groupId" to groupId,
+                                "groupName" to groupName,
+                                "callerId" to currentUid,
+                                "timestamp" to System.currentTimeMillis()
+                            )
+                            db.child("incoming_group_calls").child(memberId).setValue(notification)
+                        }
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {}
+            })
+    }
 }

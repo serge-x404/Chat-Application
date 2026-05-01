@@ -36,7 +36,8 @@ import dev.serge.chatapplication.screen.neobrut.BrutalTextField
 @Composable
 fun GroupChatScreen(
     groupId: String,
-    back: () -> Unit
+    back: () -> Unit,
+    navigateToCall: (String) -> Unit
 ) {
 
     var groupName by remember { mutableStateOf("Group") }
@@ -95,7 +96,16 @@ fun GroupChatScreen(
             .imePadding()
             .background(MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.8f))
     ) {
-        BrutalGroupBar(groupName, memberCount, modifier = Modifier, onBackClick = back)
+        BrutalGroupBar(
+            groupName,
+            memberCount,
+            modifier = Modifier,
+            navigateToCall = {
+                groupManager.notifyGroupCall(groupId, groupName)
+                navigateToCall(groupId)
+            },
+            onBackClick = back
+        )
 
         LazyColumn(
             modifier = Modifier
