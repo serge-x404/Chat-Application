@@ -6,4 +6,5 @@ sealed class NavRoute(val path: String) {
     object AuthScreen: NavRoute("authScreen")
     object GroupChat: NavRoute("groupChat")
     object WebRTC: NavRoute("webRTC")
+    object GroupRTC: NavRoute("groupRTC")
 }

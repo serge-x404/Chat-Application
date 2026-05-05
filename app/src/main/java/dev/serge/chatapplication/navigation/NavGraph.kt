@@ -16,6 +16,7 @@ import com.google.firebase.database.ValueEventListener
 import dev.serge.chatapplication.screen.BrutalAuthScreen
 import dev.serge.chatapplication.screen.ChatHomeScreen
 import dev.serge.chatapplication.screen.GroupChatScreen
+import dev.serge.chatapplication.screen.GroupRTCScreen
 import dev.serge.chatapplication.screen.HomeScreen
 import dev.serge.chatapplication.screen.WebRTCCallScreen
 
@@ -48,6 +49,20 @@ fun NavGraph(
 
                 override fun onCancelled(error: DatabaseError) {}
             })
+
+        db.child("incoming_group_calls").child(currentUserId)
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val data = snapshot.value as? Map<*, *> ?: return
+                    val groupId = data["groupId"] as? String ?: return
+
+                    navHostController.navigate("${NavRoute.GroupRTC.path}/$groupId/false")
+
+                    snapshot.ref.removeValue()
+                }
+
+                override fun onCancelled(error: DatabaseError) {}
+            })
     }
 
     NavHost(navHostController, startDestination) {
@@ -56,6 +71,7 @@ fun NavGraph(
         addAuthScreen(navHostController, this)
         addGroupChatScreen(navHostController, this)
         addWebRTCScreen(navHostController, this)
+        addGroupRTCScreen(navHostController, this)
     }
 }
 
@@ -114,7 +130,9 @@ fun addGroupChatScreen(navHostController: NavHostController, navGraphBuilder: Na
         val groupId = it.arguments?.getString("groupId") ?: ""
         GroupChatScreen(
             groupId = groupId,
-            back = {navHostController.popBackStack()}
+            back = {navHostController.popBackStack()},
+            navigateToCall = {gId ->
+                navHostController.navigate("${NavRoute.GroupRTC.path}/$gId/true")}
         )
     }
 }
@@ -133,6 +151,22 @@ fun addWebRTCScreen(navHostController: NavHostController, navGraphBuilder: NavGr
             isCaller = isCaller,
             onCallEnded = { navHostController.navigate(NavRoute.Home.path){
                 popUpTo(NavRoute.Home.path){
+                    inclusive = false
+                }
+            } }
+        )
+    }
+}
+
+fun addGroupRTCScreen(navHostController: NavHostController, navGraphBuilder: NavGraphBuilder) {
+    navGraphBuilder.composable("${ NavRoute.GroupRTC.path }/{groupId}/{isCaller}") {
+        val roomId = it.arguments?.getString("groupId") ?: ""
+        val isCaller = it.arguments?.getString("isCaller")?.toBoolean() ?: true
+        GroupRTCScreen(
+            roomId = roomId,
+            isCaller = isCaller,
+            onCallEnded = {navHostController.navigate(NavRoute.Home.path) {
+                popUpTo(NavRoute.Home.path) {
                     inclusive = false
                 }
             } }
